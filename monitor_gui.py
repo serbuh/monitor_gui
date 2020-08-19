@@ -1,0 +1,74 @@
+import socket
+import json
+import tkinter as tk
+
+class UDP():
+    def __init__(self, udp_receiver):
+        self.bind_recv(udp_receiver)
+
+    def bind_recv(self, udp_receiver):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.sock.bind(udp_receiver)
+
+    def recv(self):
+        recv_data, address = self.sock.recvfrom(4096)
+        return json.loads(recv_data) # return dict
+
+
+class Window():
+    def __init__(self, master, conn):
+        self.conn = conn # UDP connection object
+        self.master = master
+        #self.master.geometry('300x300')
+        self.master.bind("<q>", self.quit_all)
+
+        #status_dict = {"Video FPS"  : 24.3,
+        #        "Telem FPS" : 22.0,
+        #        "frame"     : 23832,
+        #        "Last FPC"  : 13,
+        #        "FOV"       : (60.5, 55.6),
+        #        "Sensor"    : "VIS",
+        #        "CVS state" : "Scout"}
+        #self.add_labels(status_dict)
+        self.master.after(10, self.refresh_labels)
+        
+    def refresh_labels(self):
+        print("refreshing labels")
+        status_dict = self.conn.recv() # Get status_dict from UDP socket
+
+        # Add labels in frames to the main window (root)
+        max_name_len = max({len(x) for x in status_dict.keys()})
+        max_value_len = max({len(str(status_dict[x])) for x in status_dict.keys()})
+        for row_count, field_name in enumerate(status_dict.keys()):
+            # Frame
+            frm_msg = tk.Frame(master=self.master,
+                        width=50,
+                        height=10,
+                        bg="grey",
+                        borderwidth=0,
+                        )
+            self.master.rowconfigure(row_count, weight=1, minsize=20)
+            self.master.columnconfigure(0, weight=1, minsize=50)
+            frm_msg.grid(row=row_count, column=0, pady=0)
+            
+
+            # Label
+            lbl_name = tk.Label(master = frm_msg, width=max_name_len, relief=tk.RAISED, bd=2, text = field_name)
+            lbl_name.grid(row=0, column=0)
+            lbl_value = tk.Label(master = frm_msg, width=max_value_len, relief=tk.RAISED, bd=2, text = status_dict[field_name])
+            lbl_value.grid(row=0, column=1)
+        
+        self.master.after(1000, self.refresh_labels)
+
+
+    def quit_all(self, event):
+        print("pressed Q => Exit()")
+        self.master.destroy()
+
+
+
+root = tk.Tk()
+conn = UDP(("127.0.0.1", 5005)) # UDP connection object
+Window(root, conn)
+root.mainloop()
