@@ -11,7 +11,7 @@ while True:
     recv_data, address = sock.recvfrom(4096)
 
     recv_dict = json.loads(recv_data)
-    print(f"Sending {recv_dict}")
+    print(f"Receiving {recv_dict}")
     time.sleep(1/30)
 
 
