@@ -24,7 +24,6 @@ class Window():
         self.master.bind("<q>", self.quit_all)
 
         # Get first
-        #self.add_labels(status_dict)
         self.master.after(10, self.update_labels_text)
         
     def update_labels_text(self):
@@ -58,12 +57,7 @@ class Window():
     def refresh_labels(self):
         status_dict = self.conn.recv() # Get status_dict from UDP socket
         for field_name in status_dict:
-            try:
-                self.curr_fields_dict[field_name].set(status_dict[field_name]) # Set text to the StringVar
-            except KeyError:
-                pass # received message with unknown label. Nothing to update
-                # Consider implementing online add_new_labels() function
-        
+            self.curr_fields_dict[field_name].set(status_dict[field_name]) # Set text to the StringVar
         self.master.after(10, self.refresh_labels)
     def quit_all(self, event):
         print("pressed Q => Exit()")
