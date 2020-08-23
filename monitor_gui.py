@@ -22,13 +22,22 @@ class Window():
         self.master = master
         #self.master.geometry('300x300')
         self.master.bind("<q>", self.quit_all)
-
-        # Get first
-        self.master.after(10, self.update_labels_text)
+        self.master.after(10, self.refresh_labels)
         
-    def update_labels_text(self):
+    def refresh_labels(self):
         status_dict = self.conn.recv() # Get status_dict from UDP socket
+        
+        try:
+            for field_name in status_dict:
+                self.curr_fields_dict[field_name].set(status_dict[field_name]) # Set text to the StringVar
+        except KeyError: # New field added / removed
+            self.update_labels_text(status_dict)
+        except AttributeError: # curr_fields_dict is still does not exist (First run)
+            self.update_labels_text(status_dict)
 
+        self.master.after(10, self.refresh_labels)
+
+    def update_labels_text(self, status_dict):
         # Add labels in frames to the main window (root)
         max_name_len = max({len(x) for x in status_dict.keys()})
         max_value_len = max({len(str(status_dict[x])) for x in status_dict.keys()})
@@ -50,15 +59,8 @@ class Window():
             self.curr_fields_dict[field_name].set(status_dict[field_name]) # Set text to the StringVar
             tk.Label(master = frm_msg, width=max_name_len, relief=tk.RAISED, bd=2, text = field_name).grid(row=0, column=0)
             tk.Label(master = frm_msg, width=max_value_len, relief=tk.RAISED, bd=2, textvariable = self.curr_fields_dict[field_name]).grid(row=0, column=1) # bind to StringVar
-            
-        print("Listening ...")
-        self.master.after(10, self.refresh_labels)
-    
-    def refresh_labels(self):
-        status_dict = self.conn.recv() # Get status_dict from UDP socket
-        for field_name in status_dict:
-            self.curr_fields_dict[field_name].set(status_dict[field_name]) # Set text to the StringVar
-        self.master.after(10, self.refresh_labels)
+
+
     def quit_all(self, event):
         print("pressed Q => Exit()")
         self.master.destroy()
