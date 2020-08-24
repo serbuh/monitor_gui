@@ -37,6 +37,7 @@ class Window():
         self.master = master
         #self.master.geometry('300x300')
         self.master.bind("<q>", self.quit_all)
+        self.curr_fields_dict = {} # Create local labels field names list
         self.add_frames()
         self.master.after(10, self.update_labels_text)
 
@@ -79,7 +80,9 @@ class Window():
         pass
 
     def clear_button_click(self):
-        pass
+        for child in self.dynamic_status_frame.winfo_children():
+            child.destroy()
+        self.curr_fields_dict = {} # Zeroing current fields list
 
     def update_labels_text(self):
         '''
@@ -106,14 +109,11 @@ class Window():
         '''
         Refresh the local labels list
         '''
+        print("update")
         # Add labels in frames to the main window (root)
         max_name_len = max({len(x) for x in status_dict.keys()})
         max_value_len = max({len(str(status_dict[x])) for x in status_dict.keys()})
-        self.curr_fields_dict = {} # Create / zeroing current fields list
-        
-        # destroy all the childrenof the status frame
-        #for child in self.curr_fields_dict.winfo_children():
-        #    child.destroy()
+        self.curr_fields_dict = {} # Zeroing current fields list
         
         for row_count, field_name in enumerate(status_dict.keys()):
             # Frame
