@@ -3,14 +3,14 @@ import socket
 import json
 
 
-status_dict = {"Video FPS"  : 24.3,
-                "Telem FPS" : 22.0,
-                "frame"     : 23832,
-                "Last FPC"  : 13,
-                "FOV"       : (60.5, 55.6),
-                "Sensor"    : "VIS",
-                "CVS state" : "Scout",
-                "Counter"   : -999}
+status_dict = {"Video FPS"  : (24.3,0),
+                "Telem FPS" : (22.0,1),
+                "frame"     : (23832,2),
+                "Last FPC"  : (13,1),
+                "FOV"       : ((60.5, 55.6), 1),
+                "Sensor"    : ("VIS", 0),
+                "CVS state" : ("Scout", 1),
+                "Counter"   : (-999, 0)}
 
 
 udp_receiver = ("127.0.0.1", 5005)

@@ -91,32 +91,42 @@ class Window():
         If new label detected => update_labels_list() is called and the list of the local labels is updated
         '''
 
-        status_dict = self.conn.recv_select() # Get status_dict from UDP socket
+        new_status_dict = self.conn.recv_select() # Get new_status_dict from UDP socket
 
-        try:
-            for field_name in status_dict:
-                self.curr_fields_dict[field_name].set(status_dict[field_name]) # Set text to the StringVar
-        except KeyError: # New field added / removed
-            self.update_labels_list(status_dict)
-        except AttributeError: # curr_fields_dict is still does not exist (First run)
-            self.update_labels_list(status_dict)
-        except TypeError: # Probably status_dict is None (nothing received) => do nothing
-            pass
+        
+        if new_status_dict is not None:
+            for field_name in new_status_dict:
+                if field_name not in self.curr_fields_dict: # we have a new status field
+                    self.update_labels_list(new_status_dict)
+                else:
+                    try:
+                        self.curr_fields_dict[field_name].set(new_status_dict[field_name][0]) # Set text to the StringVar
+                    except TypeError as e:
+                        print(f"Type error in field '{field_name}': {e}")
+                        self.curr_fields_dict[field_name].set("Wrong type") # Set text to the StringVar
+                    except Exception as e:
+                        print(f"Exception in field '{field_name}': {e}")
+                        print("Let's see.. a new exception during putting new_status_dict into GUI")
+                        import pdb; pdb.set_trace()
+        else:
+            pass # No new_status_dict received in this iteration
+
+        
 
         self.master.after(10, self.update_labels_text)
 
-    def update_labels_list(self, status_dict):
+    def update_labels_list(self, new_status_dict):
         '''
         Refresh the local labels list
         '''
-        print("update")
+        print("update labels")
         # Add labels in frames to the main window (root)
-        max_name_len = max({len(x) for x in status_dict.keys()})
-        max_value_len = max({len(str(status_dict[x])) for x in status_dict.keys()})
+        max_name_len = max({len(x) for x in new_status_dict.keys()})
+        max_value_len = max({len(str(new_status_dict[x])) for x in new_status_dict.keys()})
         self.curr_fields_dict = {} # Zeroing current fields list
         
-        for row_count, field_name in enumerate(status_dict.keys()):
-            # Frame
+        for row_count, field_name in enumerate(new_status_dict.keys()):
+            # Create subframe for the field
             frm_msg = tk.Frame(master=self.dynamic_status_frame,
                         width=50,
                         height=10,
@@ -129,7 +139,11 @@ class Window():
             
             # Label
             self.curr_fields_dict[field_name] = tk.StringVar()             # Create new StringVar
-            self.curr_fields_dict[field_name].set(status_dict[field_name]) # Set text to the StringVar
+            try:
+                self.curr_fields_dict[field_name].set(new_status_dict[field_name][0]) # Set text to the StringVar
+            except TypeError as e:
+                print(f"Type error in field '{field_name}': {e}")
+                self.curr_fields_dict[field_name].set("Wrong type") # Set text to the StringVar
             tk.Label(master = frm_msg, width=max_name_len, relief=tk.RAISED, bd=2, text = field_name).grid(row=0, column=0)
             tk.Label(master = frm_msg, width=max_value_len, relief=tk.RAISED, bd=2, textvariable = self.curr_fields_dict[field_name]).grid(row=0, column=1) # bind to StringVar
 
