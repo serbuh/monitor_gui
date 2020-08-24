@@ -1,19 +1,34 @@
 import socket
 import json
 import tkinter as tk
+import select
 
 class UDP():
     def __init__(self, udp_receiver):
+        self.udp_receiver = udp_receiver
         self.bind_recv(udp_receiver)
-
+        
     def bind_recv(self, udp_receiver):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind(udp_receiver)
+        self.sock.setblocking(0)
 
-    def recv(self):
-        recv_data, address = self.sock.recvfrom(4096)
-        return json.loads(recv_data) # return dict
+    def recv(self): # Not in use
+        try:
+            recv_data, address = self.sock.recvfrom(4096)
+            return json.loads(recv_data) # return dict
+        except BlockingIOError as e:
+            print(f"Socket error: {e}")
+    
+    def recv_select(self):
+        readable, writable, exceptional = select.select([self.sock], [], [self.sock], 0)
+        for s in readable:
+            if s is self.sock:
+                recv_data, address = s.recvfrom(4096)
+                return json.loads(recv_data) # return dict
+        return None
+
 
 
 class Window():
@@ -25,8 +40,12 @@ class Window():
         self.master.after(10, self.refresh_labels)
         
     def refresh_labels(self):
-        status_dict = self.conn.recv() # Get status_dict from UDP socket
-        
+        status_dict = self.conn.recv_select() # Get status_dict from UDP socket
+        if status_dict is None:
+            print("pass")
+            self.master.after(10, self.refresh_labels)
+            return
+
         try:
             for field_name in status_dict:
                 self.curr_fields_dict[field_name].set(status_dict[field_name]) # Set text to the StringVar
@@ -34,6 +53,8 @@ class Window():
             self.update_labels_text(status_dict)
         except AttributeError: # curr_fields_dict is still does not exist (First run)
             self.update_labels_text(status_dict)
+        except TypeError: # Probably status_dict is None (nothing received) => do nothing
+            pass
 
         self.master.after(10, self.refresh_labels)
 
