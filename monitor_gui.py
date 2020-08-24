@@ -74,7 +74,7 @@ class Window():
 
     def add_to_constant_things_frame(self):
         # Add clear button
-        tk.Button(self.constant_things_frame, text ="Clear", command = self.clear_button_click).grid(row=0, column=0, pady=0)
+        tk.Button(self.constant_things_frame, text ="Clear labels", command = self.clear_button_click).grid(row=0, column=0, pady=0)
     
     def add_to_dynamic_status_frame(self):
         pass
@@ -100,10 +100,15 @@ class Window():
                     self.update_labels_list(new_status_dict)
                 else:
                     try:
-                        self.curr_fields_dict[field_name].set(new_status_dict[field_name][0]) # Set text to the StringVar
+                        ### Update the label's text (in existing label)
+                        self.curr_fields_dict[field_name][0].set(new_status_dict[field_name][0]) # Set text to the StringVar
+                        color_id = new_status_dict[field_name][1]
+                        self.update_labels_color(field_name, color_id)
                     except TypeError as e:
                         print(f"Type error in field '{field_name}': {e}")
-                        self.curr_fields_dict[field_name].set("Wrong type") # Set text to the StringVar
+                        self.curr_fields_dict[field_name][0].set("Wrong type") # Set text to the StringVar
+                        color_id = 1 # set the color of the wrong type to 1 hardcoded
+                        self.update_labels_color(field_name, color_id)
                     except Exception as e:
                         print(f"Exception in field '{field_name}': {e}")
                         print("Let's see.. a new exception during putting new_status_dict into GUI")
@@ -119,7 +124,7 @@ class Window():
         '''
         Refresh the local labels list
         '''
-        print("update labels")
+        print("update labels list")
         # Add labels in frames to the main window (root)
         max_name_len = max({len(x) for x in new_status_dict.keys()})
         max_value_len = max({len(str(new_status_dict[x])) for x in new_status_dict.keys()})
@@ -137,16 +142,32 @@ class Window():
             self.dynamic_status_frame.columnconfigure(0, weight=1, minsize=50)
             frm_msg.grid(row=row_count, column=0, pady=0) # +1 because we have a frame of constant things before
             
-            # Label
-            self.curr_fields_dict[field_name] = tk.StringVar()             # Create new StringVar
+            # Add new Label
+            lbl_field_text_StringVar  = tk.StringVar()             # Create new StringVar
+            # Update the label's text (in a new label)
             try:
-                self.curr_fields_dict[field_name].set(new_status_dict[field_name][0]) # Set text to the StringVar
+                lbl_field_text_StringVar.set(new_status_dict[field_name][0]) # Set text to the StringVar
+                color_id = new_status_dict[field_name][1]
             except TypeError as e:
                 print(f"Type error in field '{field_name}': {e}")
-                self.curr_fields_dict[field_name].set("Wrong type") # Set text to the StringVar
-            tk.Label(master = frm_msg, width=max_name_len, relief=tk.RAISED, bd=2, text = field_name).grid(row=0, column=0)
-            tk.Label(master = frm_msg, width=max_value_len, relief=tk.RAISED, bd=2, textvariable = self.curr_fields_dict[field_name]).grid(row=0, column=1) # bind to StringVar
-
+                lbl_field_text_StringVar.set("Wrong type") # Set text to the StringVar
+            # Create the lable itself and assign a text
+            lbl_field_name = tk.Label(master = frm_msg, width=max_name_len, relief=tk.RAISED, bd=2, text = field_name)
+            lbl_field_name.grid(row=0, column=0)
+            lbl_field_text = tk.Label(master = frm_msg, width=max_value_len, relief=tk.RAISED, bd=2, textvariable = lbl_field_text_StringVar) # bind to StringVar
+            lbl_field_text.grid(row=0, column=1)
+            # Save label's and StringVar to the list
+            self.curr_fields_dict[field_name] = [lbl_field_text_StringVar, lbl_field_name, lbl_field_text]
+            # update label's color
+            self.update_labels_color(field_name, color_id)
+            
+    def update_labels_color(self, field_name, color_id):
+        if color_id == 0:
+            self.curr_fields_dict[field_name][1].config(bg="green") # update lbl_field_name
+            self.curr_fields_dict[field_name][2].config(bg="green") # update lbl_field_text
+        elif color_id == 1:
+            self.curr_fields_dict[field_name][1].config(bg="red") # update lbl_field_name
+            self.curr_fields_dict[field_name][2].config(bg="red") # update lbl_field_text
 
     def quit_all(self, event):
         '''

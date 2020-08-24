@@ -20,7 +20,10 @@ sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 counter = 0
 while True:
     counter += 1
-    status_dict["Counter"] = counter
+    if counter < 150:
+        status_dict["Counter"] = (counter,1)
+    else:
+        status_dict["Counter"] = (counter,0)
     # Sending dict
     print(f"Sending {status_dict}")
     msg = str.encode(json.dumps(status_dict))
