@@ -163,11 +163,13 @@ class Window():
             
     def update_labels_color(self, field_name, color_id):
         if color_id == 0:
-            self.curr_fields_dict[field_name][1].config(bg="green") # update lbl_field_name
-            self.curr_fields_dict[field_name][2].config(bg="green") # update lbl_field_text
+            color = "green"
         elif color_id == 1:
-            self.curr_fields_dict[field_name][1].config(bg="red") # update lbl_field_name
-            self.curr_fields_dict[field_name][2].config(bg="red") # update lbl_field_text
+            color = "red"
+        elif color_id == 2:
+            color = "goldenrod1"
+        self.curr_fields_dict[field_name][1].config(bg=color) # update lbl_field_name
+        self.curr_fields_dict[field_name][2].config(bg=color) # update lbl_field_text
 
     def quit_all(self, event):
         '''
