@@ -36,6 +36,8 @@ class Window():
         self.conn = conn # UDP connection object
         self.master = master
         #self.master.geometry('300x300')
+        self.master.title("Monitor")
+        self.master.iconbitmap("bread.ico")
         self.master.bind("<q>", self.quit_all)
         self.curr_fields_dict = {} # Create local labels field names list
         self.add_frames()
@@ -49,11 +51,14 @@ class Window():
         self.master.columnconfigure(0, weight=1, minsize=50)
 
         # Add constatn things frame
-        self.constant_things_frame = tk.Frame(
+        self.constant_things_frame = tk.LabelFrame(
+                        text="Controll",
+                        padx=10,
+                        pady=10,
                         master=self.master,
                         width=50,
                         height=10,
-                        borderwidth=0,
+                        borderwidth=1,
                         )
         # Configure masters 0 row
         self.master.rowconfigure(0, weight=1, minsize=20)
@@ -61,11 +66,14 @@ class Window():
         self.add_to_constant_things_frame()
 
         # Add dynamic status frame
-        self.dynamic_status_frame = tk.Frame(
+        self.dynamic_status_frame = tk.LabelFrame(
+                        text="Status",
+                        padx=10,
+                        pady=10,
                         master=self.master,
                         width=50,
                         height=10,
-                        borderwidth=0,
+                        borderwidth=1,
                         )
         # Configure masters 1 row
         self.master.rowconfigure(1, weight=1, minsize=20)
