@@ -43,7 +43,12 @@ class Window():
         self.master.title("Monitor")
         self.master.iconbitmap("bread.ico")
         self.master.bind("<q>", self.quit_all)
+        
+        # always on top
+        self.always_on_top = tk.IntVar()
+        self.always_on_top.set(1)
         self.master.wm_attributes("-topmost", 1)
+        
         self.curr_fields_dict = {} # Create local labels field names list
         self.add_frames()
         self.master.after(10, self.update_labels_text)
@@ -77,7 +82,7 @@ class Window():
                         pady=10,
                         master=self.master,
                         width=50,
-                        height=10,
+                        height=20,
                         borderwidth=1,
                         )
         # Configure masters 1 row
@@ -88,9 +93,13 @@ class Window():
     def add_to_constant_things_frame(self):
         # Add clear button
         tk.Button(self.constant_things_frame, text ="Clear labels", command = self.clear_button_click).grid(row=0, column=0, pady=0)
-    
+        tk.Checkbutton(self.constant_things_frame, text="Always on top", variable=self.always_on_top, command=self.always_on_top_toggle).grid(row=1, column=0, pady=0)
+
     def add_to_dynamic_status_frame(self):
         pass
+
+    def always_on_top_toggle(self):
+        self.master.wm_attributes("-topmost", self.always_on_top.get()) # Always on top - Windows
 
     def clear_button_click(self):
         for child in self.dynamic_status_frame.winfo_children():
