@@ -1,6 +1,10 @@
 import socket
 import json
-import tkinter as tk
+import sys
+if sys.version_info[0] == 2
+    import Tkinter as tk # for python2
+else:
+    import tkinter as tk # for python3
 import select
 
 class UDP():
@@ -19,7 +23,7 @@ class UDP():
             recv_data, address = self.sock.recvfrom(4096)
             return json.loads(recv_data) # return dict
         except BlockingIOError as e:
-            print(f"Socket error: {e}")
+            print("Socket error: {}".format(e))
     
     def recv_select(self):
         readable, writable, exceptional = select.select([self.sock], [], [self.sock], 0)
@@ -39,6 +43,7 @@ class Window():
         self.master.title("Monitor")
         self.master.iconbitmap("bread.ico")
         self.master.bind("<q>", self.quit_all)
+        self.master.wm_attributes("-topmost", 1)
         self.curr_fields_dict = {} # Create local labels field names list
         self.add_frames()
         self.master.after(10, self.update_labels_text)
@@ -113,12 +118,12 @@ class Window():
                         color_id = new_status_dict[field_name][1]
                         self.update_labels_color(field_name, color_id)
                     except TypeError as e:
-                        print(f"Type error in field '{field_name}': {e}")
+                        print("Type error in field '{}': {}".format(field_name, e))
                         self.curr_fields_dict[field_name][0].set("Wrong type") # Set text to the StringVar
                         color_id = 1 # set the color of the wrong type to 1 hardcoded
                         self.update_labels_color(field_name, color_id)
                     except Exception as e:
-                        print(f"Exception in field '{field_name}': {e}")
+                        print("Exception in field '{}': {}".format(field_name, e))
                         print("Let's see.. a new exception during putting new_status_dict into GUI")
                         import pdb; pdb.set_trace()
         else:
@@ -157,7 +162,7 @@ class Window():
                 lbl_field_text_StringVar.set(new_status_dict[field_name][0]) # Set text to the StringVar
                 color_id = new_status_dict[field_name][1]
             except TypeError as e:
-                print(f"Type error in field '{field_name}': {e}")
+                print("Type error in field '{}': {}".format(field_name, e))
                 lbl_field_text_StringVar.set("Wrong type") # Set text to the StringVar
             # Create the lable itself and assign a text
             lbl_field_name = tk.Label(master = frm_msg, width=max_name_len, relief=tk.RAISED, bd=2, text = field_name)
@@ -173,9 +178,9 @@ class Window():
         if color_id == 0:
             color = "green"
         elif color_id == 1:
-            color = "red"
-        elif color_id == 2:
             color = "goldenrod1"
+        elif color_id == 2:
+            color = "red"
         self.curr_fields_dict[field_name][1].config(bg=color) # update lbl_field_name
         self.curr_fields_dict[field_name][2].config(bg=color) # update lbl_field_text
 
