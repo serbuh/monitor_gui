@@ -1,7 +1,7 @@
 import socket
 import json
 import sys
-if sys.version_info[0] == 2
+if sys.version_info[0] == 2:
     import Tkinter as tk # for python2
 else:
     import tkinter as tk # for python3
