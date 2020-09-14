@@ -13,9 +13,9 @@ status_dict = {"Video FPS"  : (24.3,0),
                 "Counter"   : (-999, 0)}
 
 
-udp_receiver = ("127.0.0.1", 5005)
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+udp_monitor_addr = ("127.0.0.1", 5005)
+udp_monitor_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+udp_monitor_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 counter = 0
 while True:
@@ -25,9 +25,9 @@ while True:
     else:
         status_dict["Counter"] = (counter,0)
     # Sending dict
-    print(f"Sending {status_dict}")
+    print("Sending {}".format(status_dict))
     msg = str.encode(json.dumps(status_dict))
-    sock.sendto(msg, udp_receiver)
+    udp_monitor_sock.sendto(msg, udp_monitor_addr)
     time.sleep(1/30)
 
 
