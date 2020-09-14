@@ -49,6 +49,10 @@ class Window():
         self.always_on_top.set(1)
         self.master.wm_attributes("-topmost", 1)
         
+        # draw azimuth
+        self.draw_azimuth = tk.IntVar()
+        self.draw_azimuth.set(0)
+
         self.curr_fields_dict = {} # Create local labels field names list
         self.add_frames()
         self.master.after(10, self.update_labels_text)
@@ -90,16 +94,48 @@ class Window():
         self.dynamic_status_frame.grid(row=1, column=0, pady=0)
         self.add_to_dynamic_status_frame()
 
+    def add_draw_azimuth_frame(self):
+        # Add dynamic status frame
+        self.draw_azimuth_frame = tk.LabelFrame(
+                        text="Azimuth",
+                        padx=10,
+                        pady=10,
+                        master=self.master,
+                        width=50,
+                        height=20,
+                        borderwidth=1,
+                        )
+        self.draw_azimuth_frame.grid(row=1, column=1, pady=0)
+
+        self.azimuth_canvas = tk.Canvas(self.draw_azimuth_frame, width=400, height=400, background='white')
+        self.azimuth_canvas.grid(row=0, column=0)
+        self.azimuth_canvas.create_line(0,0,400,400,fill='black')
+        self.azimuth_canvas.update_idletasks()
+
+        
+    def remove_draw_azimuth_frame(self):
+        self.draw_azimuth_frame.destroy()
+
     def add_to_constant_things_frame(self):
         # Add clear button
         tk.Button(self.constant_things_frame, text ="Clear labels", command = self.clear_button_click).grid(row=0, column=0, pady=0)
+        # Add always on top checkbox
         tk.Checkbutton(self.constant_things_frame, text="Always on top", variable=self.always_on_top, command=self.always_on_top_toggle).grid(row=1, column=0, pady=0)
+        # Add draw azimuth checkbox
+        tk.Checkbutton(self.constant_things_frame, text="Draw azimuth", variable=self.draw_azimuth, command=self.draw_azimuth_toggle).grid(row=2, column=0, pady=0)
 
     def add_to_dynamic_status_frame(self):
         pass
 
     def always_on_top_toggle(self):
         self.master.wm_attributes("-topmost", self.always_on_top.get()) # Always on top - Windows
+
+    def draw_azimuth_toggle(self):
+        checkbox_state = self.draw_azimuth.get()
+        if checkbox_state:
+            self.add_draw_azimuth_frame()
+        else:
+            self.remove_draw_azimuth_frame()
 
     def clear_button_click(self):
         for child in self.dynamic_status_frame.winfo_children():

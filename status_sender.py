@@ -10,7 +10,8 @@ status_dict = {"Video FPS"  : (24.3,0),
                 "FOV"       : ((60.5, 55.6), 1),
                 "Sensor"    : ("VIS", 0),
                 "CVS state" : ("Scout", 1),
-                "Counter"   : (-999, 0)}
+                "Counter"   : (-999, 0),
+                "azimuth"   : (0.0, 0)}
 
 
 udp_monitor_addr = ("127.0.0.1", 5005)
@@ -24,6 +25,8 @@ while True:
         status_dict["Counter"] = (counter,1)
     else:
         status_dict["Counter"] = (counter,0)
+    status_dict["azimuth"] = ((0.5 * counter) % 360, 0)
+    
     # Sending dict
     print("Sending {}".format(status_dict))
     msg = str.encode(json.dumps(status_dict))
