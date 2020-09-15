@@ -1,11 +1,14 @@
 import socket
 import json
 import sys
+import math
+import select
+
 if sys.version_info[0] == 2:
     import Tkinter as tk # for python2
 else:
     import tkinter as tk # for python3
-import select
+
 
 class UDP():
     def __init__(self, udp_receiver):
@@ -49,13 +52,13 @@ class Window():
         self.always_on_top.set(1)
         self.master.wm_attributes("-topmost", 1)
         
-        # draw azimuth
-        self.draw_azimuth = tk.IntVar()
-        self.draw_azimuth.set(0)
+        # draw compass
+        self.draw_compass = tk.IntVar()
+        self.draw_compass.set(0)
 
         self.curr_fields_dict = {} # Create local labels field names list
         self.add_frames()
-        self.master.after(10, self.update_labels_text)
+        self.master.after(10, self.update_all)
 
     def add_frames(self):
         '''
@@ -94,10 +97,10 @@ class Window():
         self.dynamic_status_frame.grid(row=1, column=0, pady=0)
         self.add_to_dynamic_status_frame()
 
-    def add_draw_azimuth_frame(self):
+    def add_draw_compass_frame(self):
         # Add dynamic status frame
-        self.draw_azimuth_frame = tk.LabelFrame(
-                        text="Azimuth",
+        self.draw_compass_frame = tk.LabelFrame(
+                        text="Compass",
                         padx=10,
                         pady=10,
                         master=self.master,
@@ -105,24 +108,34 @@ class Window():
                         height=20,
                         borderwidth=1,
                         )
-        self.draw_azimuth_frame.grid(row=1, column=1, pady=0)
+        self.draw_compass_frame.grid(row=1, column=1, pady=0)
 
-        self.azimuth_canvas = tk.Canvas(self.draw_azimuth_frame, width=400, height=400, background='white')
-        self.azimuth_canvas.grid(row=0, column=0)
-        self.azimuth_canvas.create_line(0,0,400,400,fill='black')
-        self.azimuth_canvas.update_idletasks()
+        self.compass_width = 400 # width and height of Canvas
+        self.compass_center_x = self.compass_width/2
+        self.compass_center_y = self.compass_width/2
+        self.compass_radius = int((self.compass_width/2) * 0.9)
+        self.compass_canvas = tk.Canvas(self.draw_compass_frame, width=self.compass_width, height=self.compass_width, background='white')
+        self.compass_canvas.grid(row=0, column=0)
+        # Create dial
+        def _create_circle(self, x, y, r, **kwargs):
+            return self.create_oval(x-r, y-r, x+r, y+r, **kwargs)
+        self.compass_canvas.create_circle = _create_circle
+        self.compass_canvas.create_circle(self.compass_canvas, self.compass_center_x, self.compass_center_y, self.compass_radius, fill="pale green", outline="#999", width=4)
+        # Create arrow
+        self.compass_arrow = self.compass_canvas.create_line(self.compass_center_x, self.compass_center_y,self.compass_center_x, self.compass_center_y, fill='black')
+        self.compass_canvas.update_idletasks()
 
         
-    def remove_draw_azimuth_frame(self):
-        self.draw_azimuth_frame.destroy()
+    def remove_draw_compass_frame(self):
+        self.draw_compass_frame.destroy()
 
     def add_to_constant_things_frame(self):
         # Add clear button
         tk.Button(self.constant_things_frame, text ="Clear labels", command = self.clear_button_click).grid(row=0, column=0, pady=0)
         # Add always on top checkbox
         tk.Checkbutton(self.constant_things_frame, text="Always on top", variable=self.always_on_top, command=self.always_on_top_toggle).grid(row=1, column=0, pady=0)
-        # Add draw azimuth checkbox
-        tk.Checkbutton(self.constant_things_frame, text="Draw azimuth", variable=self.draw_azimuth, command=self.draw_azimuth_toggle).grid(row=2, column=0, pady=0)
+        # Add draw compass checkbox
+        tk.Checkbutton(self.constant_things_frame, text="Draw compass", variable=self.draw_compass, command=self.draw_compass_toggle).grid(row=2, column=0, pady=0)
 
     def add_to_dynamic_status_frame(self):
         pass
@@ -130,53 +143,54 @@ class Window():
     def always_on_top_toggle(self):
         self.master.wm_attributes("-topmost", self.always_on_top.get()) # Always on top - Windows
 
-    def draw_azimuth_toggle(self):
-        checkbox_state = self.draw_azimuth.get()
+    def draw_compass_toggle(self):
+        checkbox_state = self.draw_compass.get()
         if checkbox_state:
-            self.add_draw_azimuth_frame()
+            self.add_draw_compass_frame()
         else:
-            self.remove_draw_azimuth_frame()
+            self.remove_draw_compass_frame()
 
     def clear_button_click(self):
         for child in self.dynamic_status_frame.winfo_children():
             child.destroy()
         self.curr_fields_dict = {} # Zeroing current fields list
 
-    def update_labels_text(self):
+    def update_all(self):
+        new_status_dict = self.conn.recv_select() # Get new_status_dict from UDP socket
+        if new_status_dict is not None:
+            self.update_labels_text(new_status_dict)
+            if self.draw_compass.get(): # if draw compass checkbox is active
+                self.update_compass(new_status_dict)
+        else:
+            pass # No new_status_dict received in this iteration
+        
+        self.master.after(10, self.update_all)
+
+    def update_labels_text(self, new_status_dict):
         '''
         Refresh the text of the existing labels
 
         If new label detected => update_labels_list() is called and the list of the local labels is updated
         '''
-
-        new_status_dict = self.conn.recv_select() # Get new_status_dict from UDP socket
-
         
-        if new_status_dict is not None:
-            for field_name in new_status_dict:
-                if field_name not in self.curr_fields_dict: # we have a new status field
-                    self.update_labels_list(new_status_dict)
-                else:
-                    try:
-                        ### Update the label's text (in existing label)
-                        self.curr_fields_dict[field_name][0].set(new_status_dict[field_name][0]) # Set text to the StringVar
-                        color_id = new_status_dict[field_name][1]
-                        self.update_labels_color(field_name, color_id)
-                    except TypeError as e:
-                        print("Type error in field '{}': {}".format(field_name, e))
-                        self.curr_fields_dict[field_name][0].set("Wrong type") # Set text to the StringVar
-                        color_id = 1 # set the color of the wrong type to 1 hardcoded
-                        self.update_labels_color(field_name, color_id)
-                    except Exception as e:
-                        print("Exception in field '{}': {}".format(field_name, e))
-                        print("Let's see.. a new exception during putting new_status_dict into GUI")
-                        import pdb; pdb.set_trace()
-        else:
-            pass # No new_status_dict received in this iteration
-
-        
-
-        self.master.after(10, self.update_labels_text)
+        for field_name in new_status_dict:
+            if field_name not in self.curr_fields_dict: # we have a new status field
+                self.update_labels_list(new_status_dict)
+            else:
+                try:
+                    ### Update the label's text (in existing label)
+                    self.curr_fields_dict[field_name][0].set(new_status_dict[field_name][0]) # Set text to the StringVar
+                    color_id = new_status_dict[field_name][1]
+                    self.update_labels_color(field_name, color_id)
+                except TypeError as e:
+                    print("Type error in field '{}': {}".format(field_name, e))
+                    self.curr_fields_dict[field_name][0].set("Wrong type") # Set text to the StringVar
+                    color_id = 1 # set the color of the wrong type to 1 hardcoded
+                    self.update_labels_color(field_name, color_id)
+                except Exception as e:
+                    print("Exception in field '{}': {}".format(field_name, e))
+                    print("Let's see.. a new exception during putting new_status_dict into GUI")
+                    import pdb; pdb.set_trace()
 
     def update_labels_list(self, new_status_dict):
         '''
@@ -219,6 +233,13 @@ class Window():
             # update label's color
             self.update_labels_color(field_name, color_id)
             
+    def update_compass(self, new_status_dict):
+        new_status_dict['azimuth']
+        #TODO
+        x = 0
+        y = 0
+        self.compass_canvas.coords(self.compass_arrow, self.compass_center_x, self.compass_center_y, x, y)
+    
     def update_labels_color(self, field_name, color_id):
         if color_id == 0:
             color = "green"
