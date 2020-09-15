@@ -97,18 +97,29 @@ class Compass_window():
             self.compass_canvas.create_circle(self.compass_canvas, self.compass_center_x, self.compass_center_y, self.compass_radius, fill="pale green", outline="#999", width=4)
             
         # Create arrow
-        self.compass_arrow = self.compass_canvas.create_line(self.compass_center_x, self.compass_center_y,self.compass_center_x, self.compass_center_y, fill='black', width=3, arrow=tk.LAST)
+        self.compass_arrow_telem_yaw = self.compass_canvas.create_line(self.compass_center_x, self.compass_center_y,self.compass_center_x, self.compass_center_y, fill='black', width=3, arrow=tk.LAST)
+        self.compass_arrow_yaw = self.compass_canvas.create_line(self.compass_center_x, self.compass_center_y,self.compass_center_x, self.compass_center_y, fill='green', width=3, arrow=tk.LAST)
         self.compass_canvas.update_idletasks()
 
     def remove_draw_compass_frame(self):
         self.draw_compass_frame.destroy()
 
     def update_compass(self, new_status_dict):
-        az = new_status_dict['azimuth'][0]
-        self.compass_label_text_StringVar.set("azimuth: {}".format(az)) # Update compass label's text
-        x = self.compass_center_x + int(self.compass_radius * math.sin(math.radians(az)))
-        y = self.compass_center_y - int(self.compass_radius * math.cos(math.radians(az)))
-        self.compass_canvas.coords(self.compass_arrow, self.compass_center_x, self.compass_center_y, x, y)
+        # Arrow 1
+        telem_yaw = new_status_dict['telem_yaw'][0]
+        self.compass_label_text_StringVar.set("telem_yaw: {}".format(telem_yaw)) # Update compass label's text
+        x = self.compass_center_x + int(self.compass_radius * math.sin(math.radians(telem_yaw)))
+        y = self.compass_center_y - int(self.compass_radius * math.cos(math.radians(telem_yaw)))
+        self.compass_canvas.coords(self.compass_arrow_telem_yaw, self.compass_center_x, self.compass_center_y, x, y)
+
+        # Arrow 2
+        yaw = new_status_dict['yaw'][0]
+        self.compass_label_text_StringVar.set("yaw: {}".format(yaw)) # Update compass label's text
+        x = self.compass_center_x + int(self.compass_radius * math.sin(math.radians(yaw)))
+        y = self.compass_center_y - int(self.compass_radius * math.cos(math.radians(yaw)))
+        self.compass_canvas.coords(self.compass_arrow_yaw, self.compass_center_x, self.compass_center_y, x, y)
+
+
 
 class Window():
     def __init__(self, master, conn):
