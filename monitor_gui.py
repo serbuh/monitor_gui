@@ -77,10 +77,25 @@ class Compass_window():
         self.compass_label.grid(row=0, column=0, sticky="W")
         
         # Create dial
-        def _create_circle(self, x, y, r, **kwargs):
-            return self.create_oval(x-r, y-r, x+r, y+r, **kwargs)
-        self.compass_canvas.create_circle = _create_circle
-        self.compass_canvas.create_circle(self.compass_canvas, self.compass_center_x, self.compass_center_y, self.compass_radius, fill="pale green", outline="#999", width=4)
+        try:
+            from PIL import ImageTk, Image
+        except ModuleNotFoundError as e:
+            print(e)
+            print("No PIL module:( Can not load nice dial image. Drawing simple circle instead")
+            # Adding a simple circle dial
+            def _create_circle(self, x, y, r, **kwargs):
+                return self.create_oval(x-r, y-r, x+r, y+r, **kwargs)
+            self.compass_canvas.create_circle = _create_circle
+            self.compass_canvas.create_circle(self.compass_canvas, self.compass_center_x, self.compass_center_y, self.compass_radius, fill="pale green", outline="#999", width=4)
+        else:
+            # Adding a nice dial from PNG
+            img = Image.open("compass.png")
+            img = img.resize((int(img.width * 0.6), int(img.height * 0.6))) # resize the dial in a proper ratio
+            self.compass_img = ImageTk.PhotoImage(img)
+            img_top_left = (self.compass_center_x - (self.compass_img.width() // 2), self.compass_center_y - (self.compass_img.height() // 2))
+            self.compass_canvas.create_image(img_top_left[0], img_top_left[1], anchor="nw", image=self.compass_img)
+            self.compass_img.width()
+            self.compass_img.height()
         # Create arrow
         self.compass_arrow = self.compass_canvas.create_line(self.compass_center_x, self.compass_center_y,self.compass_center_x, self.compass_center_y, fill='black', width=3, arrow=tk.LAST)
         self.compass_canvas.update_idletasks()
