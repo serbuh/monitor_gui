@@ -47,6 +47,7 @@ class Window():
         self.master.iconbitmap("bread.ico")
         self.master.bind("<q>", self.q_pressed)
         self.master.bind("<c>", self.c_pressed)
+        self.master.bind("<t>", self.t_pressed)
         
         # always on top
         self.always_on_top = tk.IntVar()
@@ -69,7 +70,7 @@ class Window():
         self.master.columnconfigure(0, weight=1, minsize=50)
 
         # Add constatn things frame
-        self.constant_things_frame = tk.LabelFrame(
+        self.control_frame = tk.LabelFrame(
                         text="Controll",
                         padx=10,
                         pady=10,
@@ -80,8 +81,8 @@ class Window():
                         )
         # Configure masters 0 row
         self.master.rowconfigure(0, weight=1, minsize=20)
-        self.constant_things_frame.grid(row=0, column=0, pady=0)
-        self.add_to_constant_things_frame()
+        self.control_frame.grid(row=0, column=0, pady=0)
+        self.add_to_control_frame()
 
         # Add dynamic status frame
         self.dynamic_status_frame = tk.LabelFrame(
@@ -130,22 +131,29 @@ class Window():
     def remove_draw_compass_frame(self):
         self.draw_compass_frame.destroy()
 
-    def add_to_constant_things_frame(self):
+    def add_to_control_frame(self):
         # Add clear button
-        tk.Button(self.constant_things_frame, text ="Clear labels", command = self.clear_button_click).grid(row=0, column=0, pady=0)
+        tk.Button(self.control_frame, text ="Clear labels", command = self.clear_button_click).grid(row=0, column=0, pady=0)
         # Add always on top checkbox
-        tk.Checkbutton(self.constant_things_frame, text="Always on top", variable=self.always_on_top, command=self.always_on_top_toggle).grid(row=1, column=0, pady=0)
+        tk.Checkbutton(self.control_frame, text="Always on top <t>", variable=self.always_on_top, command=self.always_on_top_toggle).grid(row=1, column=0, pady=0)
         # Add draw compass checkbox
-        tk.Checkbutton(self.constant_things_frame, text="Draw compass <c>", variable=self.draw_compass, command=self.draw_compass_toggle).grid(row=2, column=0, pady=0)
+        tk.Checkbutton(self.control_frame, text="Draw compass <c>", variable=self.draw_compass, command=self.draw_compass_toggle).grid(row=2, column=0, pady=0)
+        # Add quit button
+        tk.Button(self.control_frame, text ="Quit <q>", command = self.quit_all).grid(row=3, column=0, pady=0)
 
     def add_to_dynamic_status_frame(self):
         pass
+
+    def t_pressed(self, event):
+        print("'T' pressed, toggling always on top")
+        self.always_on_top.set(1 - self.always_on_top.get()) # toggle the checkbox state
+        self.always_on_top_toggle()
 
     def always_on_top_toggle(self):
         self.master.wm_attributes("-topmost", self.always_on_top.get()) # Always on top - Windows
 
     def c_pressed(self, event):
-        print("C pressed, toggling compass")
+        print("'C' pressed, toggling compass")
         self.draw_compass.set(1 - self.draw_compass.get()) # toggle the checkbox state
         self.draw_compass_toggle()
 
