@@ -31,7 +31,7 @@ while True:
     print("Sending {}".format(status_dict))
     msg = str.encode(json.dumps(status_dict))
     udp_monitor_sock.sendto(msg, udp_monitor_addr)
-    time.sleep(1/30)
+    time.sleep(1/30.0)
 
 
 
