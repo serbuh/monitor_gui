@@ -36,7 +36,55 @@ class UDP():
                 return json.loads(recv_data) # return dict
         return None
 
+class Compass_window():
+    def __init__(self, father_window):
+        self.draw_compass = tk.IntVar()
+        self.draw_compass.set(0)
+        self.father_window = father_window
 
+    def draw_compass_toggle(self):
+        checkbox_state = self.draw_compass.get()
+        if checkbox_state:
+            self.add_draw_compass_frame()
+        else:
+            self.remove_draw_compass_frame()
+
+    def add_draw_compass_frame(self):
+        # Add dynamic status frame
+        self.draw_compass_frame = tk.LabelFrame(
+                        text="Compass",
+                        padx=10,
+                        pady=10,
+                        master=self.father_window.master,
+                        width=50,
+                        height=20,
+                        borderwidth=1,
+                        )
+        self.draw_compass_frame.grid(row=1, column=1, pady=0)
+
+        self.compass_width = 400 # width and height of Canvas
+        self.compass_center_x = self.compass_width/2
+        self.compass_center_y = self.compass_width/2
+        self.compass_radius = int((self.compass_width/2) * 0.9)
+        self.compass_canvas = tk.Canvas(self.draw_compass_frame, width=self.compass_width, height=self.compass_width, background='white')
+        self.compass_canvas.grid(row=0, column=0)
+        # Create dial
+        def _create_circle(self, x, y, r, **kwargs):
+            return self.create_oval(x-r, y-r, x+r, y+r, **kwargs)
+        self.compass_canvas.create_circle = _create_circle
+        self.compass_canvas.create_circle(self.compass_canvas, self.compass_center_x, self.compass_center_y, self.compass_radius, fill="pale green", outline="#999", width=4)
+        # Create arrow
+        self.compass_arrow = self.compass_canvas.create_line(self.compass_center_x, self.compass_center_y,self.compass_center_x, self.compass_center_y, fill='black', width=3, arrow=tk.LAST)
+        self.compass_canvas.update_idletasks()
+
+    def remove_draw_compass_frame(self):
+        self.draw_compass_frame.destroy()
+
+    def update_compass(self, new_status_dict):
+        az = new_status_dict['azimuth'][0]
+        x = self.compass_center_x + int(self.compass_radius * math.sin(math.radians(az)))
+        y = self.compass_center_y - int(self.compass_radius * math.cos(math.radians(az)))
+        self.compass_canvas.coords(self.compass_arrow, self.compass_center_x, self.compass_center_y, x, y)
 
 class Window():
     def __init__(self, master, conn):
@@ -54,9 +102,8 @@ class Window():
         self.always_on_top.set(1)
         self.master.wm_attributes("-topmost", 1)
         
-        # draw compass
-        self.draw_compass = tk.IntVar()
-        self.draw_compass.set(0)
+        # Compass
+        self.compass = Compass_window(self)
 
         self.curr_fields_dict = {} # Create local labels field names list
         self.add_frames()
@@ -99,37 +146,6 @@ class Window():
         self.dynamic_status_frame.grid(row=1, column=0, pady=0)
         self.add_to_dynamic_status_frame()
 
-    def add_draw_compass_frame(self):
-        # Add dynamic status frame
-        self.draw_compass_frame = tk.LabelFrame(
-                        text="Compass",
-                        padx=10,
-                        pady=10,
-                        master=self.master,
-                        width=50,
-                        height=20,
-                        borderwidth=1,
-                        )
-        self.draw_compass_frame.grid(row=1, column=1, pady=0)
-
-        self.compass_width = 400 # width and height of Canvas
-        self.compass_center_x = self.compass_width/2
-        self.compass_center_y = self.compass_width/2
-        self.compass_radius = int((self.compass_width/2) * 0.9)
-        self.compass_canvas = tk.Canvas(self.draw_compass_frame, width=self.compass_width, height=self.compass_width, background='white')
-        self.compass_canvas.grid(row=0, column=0)
-        # Create dial
-        def _create_circle(self, x, y, r, **kwargs):
-            return self.create_oval(x-r, y-r, x+r, y+r, **kwargs)
-        self.compass_canvas.create_circle = _create_circle
-        self.compass_canvas.create_circle(self.compass_canvas, self.compass_center_x, self.compass_center_y, self.compass_radius, fill="pale green", outline="#999", width=4)
-        # Create arrow
-        self.compass_arrow = self.compass_canvas.create_line(self.compass_center_x, self.compass_center_y,self.compass_center_x, self.compass_center_y, fill='black', width=3, arrow=tk.LAST)
-        self.compass_canvas.update_idletasks()
-
-        
-    def remove_draw_compass_frame(self):
-        self.draw_compass_frame.destroy()
 
     def add_to_control_frame(self):
         # Add clear button
@@ -137,7 +153,7 @@ class Window():
         # Add always on top checkbox
         tk.Checkbutton(self.control_frame, text="Always on top <t>", variable=self.always_on_top, command=self.always_on_top_toggle).grid(row=1, column=0, pady=0)
         # Add draw compass checkbox
-        tk.Checkbutton(self.control_frame, text="Draw compass <c>", variable=self.draw_compass, command=self.draw_compass_toggle).grid(row=2, column=0, pady=0)
+        tk.Checkbutton(self.control_frame, text="Draw compass <c>", variable=self.compass.draw_compass, command=self.compass.draw_compass_toggle).grid(row=2, column=0, pady=0)
         # Add quit button
         tk.Button(self.control_frame, text ="Quit <q>", command = self.quit_all).grid(row=3, column=0, pady=0)
 
@@ -154,15 +170,8 @@ class Window():
 
     def c_pressed(self, event):
         print("'C' pressed, toggling compass")
-        self.draw_compass.set(1 - self.draw_compass.get()) # toggle the checkbox state
-        self.draw_compass_toggle()
-
-    def draw_compass_toggle(self):
-        checkbox_state = self.draw_compass.get()
-        if checkbox_state:
-            self.add_draw_compass_frame()
-        else:
-            self.remove_draw_compass_frame()
+        self.compass.draw_compass.set(1 - self.compass.draw_compass.get()) # toggle the checkbox state
+        self.compass.draw_compass_toggle()
 
     def clear_button_click(self):
         for child in self.dynamic_status_frame.winfo_children():
@@ -173,8 +182,8 @@ class Window():
         new_status_dict = self.conn.recv_select() # Get new_status_dict from UDP socket
         if new_status_dict is not None:
             self.update_labels_text(new_status_dict)
-            if self.draw_compass.get(): # if draw compass checkbox is active
-                self.update_compass(new_status_dict)
+            if self.compass.draw_compass.get(): # if draw compass checkbox is active
+                self.compass.update_compass(new_status_dict)
         else:
             pass # No new_status_dict received in this iteration
         
@@ -247,11 +256,6 @@ class Window():
             # update label's color
             self.update_labels_color(field_name, color_id)
             
-    def update_compass(self, new_status_dict):
-        az = new_status_dict['azimuth'][0]
-        x = self.compass_center_x + int(self.compass_radius * math.sin(math.radians(az)))
-        y = self.compass_center_y - int(self.compass_radius * math.cos(math.radians(az)))
-        self.compass_canvas.coords(self.compass_arrow, self.compass_center_x, self.compass_center_y, x, y)
     
     def update_labels_color(self, field_name, color_id):
         if color_id == 0:
