@@ -60,14 +60,22 @@ class Compass_window():
                         height=20,
                         borderwidth=1,
                         )
-        self.draw_compass_frame.grid(row=1, column=1, pady=0)
+        self.draw_compass_frame.grid(row=0, column=1, pady=0, rowspan = 2)
 
         self.compass_width = 400 # width and height of Canvas
         self.compass_center_x = self.compass_width/2
         self.compass_center_y = self.compass_width/2
         self.compass_radius = int((self.compass_width/2) * 0.9)
         self.compass_canvas = tk.Canvas(self.draw_compass_frame, width=self.compass_width, height=self.compass_width, background='white')
-        self.compass_canvas.grid(row=0, column=0)
+        self.compass_canvas.grid(row=1, column=0)
+        # Create compass label
+        
+        self.compass_label_text_StringVar = tk.StringVar()             # Create new StringVar
+        self.compass_label_text_StringVar.set("Test") # Update the StringVar (label's) text
+        # Create the lable itself and assign a text
+        self.compass_label = tk.Label(master = self.draw_compass_frame, textvariable = self.compass_label_text_StringVar, anchor = "w")
+        self.compass_label.grid(row=0, column=0, sticky="W")
+        
         # Create dial
         def _create_circle(self, x, y, r, **kwargs):
             return self.create_oval(x-r, y-r, x+r, y+r, **kwargs)
@@ -82,6 +90,7 @@ class Compass_window():
 
     def update_compass(self, new_status_dict):
         az = new_status_dict['azimuth'][0]
+        self.compass_label_text_StringVar.set("azimuth: {}".format(az)) # Update compass label's text
         x = self.compass_center_x + int(self.compass_radius * math.sin(math.radians(az)))
         y = self.compass_center_y - int(self.compass_radius * math.cos(math.radians(az)))
         self.compass_canvas.coords(self.compass_arrow, self.compass_center_x, self.compass_center_y, x, y)
@@ -149,13 +158,13 @@ class Window():
 
     def add_to_control_frame(self):
         # Add clear button
-        tk.Button(self.control_frame, text ="Clear labels", command = self.clear_button_click).grid(row=0, column=0, pady=0)
+        tk.Button(self.control_frame, text ="Clear labels", command = self.clear_button_click).grid(row=0, column=0, pady=0, sticky="W")
         # Add always on top checkbox
-        tk.Checkbutton(self.control_frame, text="Always on top <t>", variable=self.always_on_top, command=self.always_on_top_toggle).grid(row=1, column=0, pady=0)
+        tk.Checkbutton(self.control_frame, text="Always on top <t>", variable=self.always_on_top, command=self.always_on_top_toggle).grid(row=1, column=0, pady=0, sticky="W")
         # Add draw compass checkbox
-        tk.Checkbutton(self.control_frame, text="Draw compass <c>", variable=self.compass.draw_compass, command=self.compass.draw_compass_toggle).grid(row=2, column=0, pady=0)
+        tk.Checkbutton(self.control_frame, text="Draw compass <c>", variable=self.compass.draw_compass, command=self.compass.draw_compass_toggle).grid(row=2, column=0, pady=0, sticky="W")
         # Add quit button
-        tk.Button(self.control_frame, text ="Quit <q>", command = self.quit_all).grid(row=3, column=0, pady=0)
+        tk.Button(self.control_frame, text ="Quit <q>", command = self.quit_all).grid(row=3, column=0, pady=0, sticky="W")
 
     def add_to_dynamic_status_frame(self):
         pass
