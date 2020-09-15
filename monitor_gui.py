@@ -45,7 +45,8 @@ class Window():
         #self.master.geometry('300x300')
         self.master.title("Monitor")
         self.master.iconbitmap("bread.ico")
-        self.master.bind("<q>", self.quit_all)
+        self.master.bind("<q>", self.q_pressed)
+        self.master.bind("<c>", self.c_pressed)
         
         # always on top
         self.always_on_top = tk.IntVar()
@@ -122,7 +123,7 @@ class Window():
         self.compass_canvas.create_circle = _create_circle
         self.compass_canvas.create_circle(self.compass_canvas, self.compass_center_x, self.compass_center_y, self.compass_radius, fill="pale green", outline="#999", width=4)
         # Create arrow
-        self.compass_arrow = self.compass_canvas.create_line(self.compass_center_x, self.compass_center_y,self.compass_center_x, self.compass_center_y, fill='black')
+        self.compass_arrow = self.compass_canvas.create_line(self.compass_center_x, self.compass_center_y,self.compass_center_x, self.compass_center_y, fill='black', width=3, arrow=tk.LAST)
         self.compass_canvas.update_idletasks()
 
         
@@ -135,13 +136,18 @@ class Window():
         # Add always on top checkbox
         tk.Checkbutton(self.constant_things_frame, text="Always on top", variable=self.always_on_top, command=self.always_on_top_toggle).grid(row=1, column=0, pady=0)
         # Add draw compass checkbox
-        tk.Checkbutton(self.constant_things_frame, text="Draw compass", variable=self.draw_compass, command=self.draw_compass_toggle).grid(row=2, column=0, pady=0)
+        tk.Checkbutton(self.constant_things_frame, text="Draw compass <c>", variable=self.draw_compass, command=self.draw_compass_toggle).grid(row=2, column=0, pady=0)
 
     def add_to_dynamic_status_frame(self):
         pass
 
     def always_on_top_toggle(self):
         self.master.wm_attributes("-topmost", self.always_on_top.get()) # Always on top - Windows
+
+    def c_pressed(self, event):
+        print("C pressed, toggling compass")
+        self.draw_compass.set(1 - self.draw_compass.get()) # toggle the checkbox state
+        self.draw_compass_toggle()
 
     def draw_compass_toggle(self):
         checkbox_state = self.draw_compass.get()
@@ -234,10 +240,9 @@ class Window():
             self.update_labels_color(field_name, color_id)
             
     def update_compass(self, new_status_dict):
-        new_status_dict['azimuth']
-        #TODO
-        x = 0
-        y = 0
+        az = new_status_dict['azimuth'][0]
+        x = self.compass_center_x + int(self.compass_radius * math.sin(math.radians(az)))
+        y = self.compass_center_y - int(self.compass_radius * math.cos(math.radians(az)))
         self.compass_canvas.coords(self.compass_arrow, self.compass_center_x, self.compass_center_y, x, y)
     
     def update_labels_color(self, field_name, color_id):
@@ -250,11 +255,14 @@ class Window():
         self.curr_fields_dict[field_name][1].config(bg=color) # update lbl_field_name
         self.curr_fields_dict[field_name][2].config(bg=color) # update lbl_field_text
 
-    def quit_all(self, event):
+    def q_pressed(self, event):
+        print("'Q' pressed. Exit.")
+        self.quit_all()
+
+    def quit_all(self):
         '''
         Destructor of GUI
         '''
-        print("'Q' pressed. Exit.")
         self.master.destroy()
 
 
