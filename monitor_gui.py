@@ -73,12 +73,12 @@ class Compass_window():
         # Create compass telem_yaw label
         self.compass_arrow_telem_yaw_text = tk.StringVar()  # Create new StringVar
         self.compass_arrow_telem_yaw_text.set("telem_yaw:") # Update the StringVar (label's) text
-        self.compass_arrow_telem_yaw_color = 'black'        # Text color
+        self.compass_arrow_telem_yaw_color = 'Black'        # Text color
         # Create the lable itself and assign a text
         self.compass_arrow_telem_yaw_label = tk.Label(master = self.draw_compass_frame, textvariable = self.compass_arrow_telem_yaw_text, anchor = "w", fg=self.compass_arrow_telem_yaw_color)
         self.compass_arrow_telem_yaw_label.grid(row=1, column=0, sticky="W")
 
-        # Add compass canvas
+        # Create compass canvas
         self.compass_width = 400 # width and height of Canvas
         self.compass_center_x = self.compass_width/2
         self.compass_center_y = self.compass_width/2

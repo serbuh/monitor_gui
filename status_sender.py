@@ -27,7 +27,7 @@ while True:
     else:
         status_dict["Counter"] = (counter,0)
     status_dict["telem_yaw"] = ((0.5 * counter) % 360, 0)
-    status_dict["yaw"] = (status_dict["telem_yaw"][0] + 60, 0)
+    status_dict["yaw"] = (360 - status_dict["telem_yaw"][0] + 60, 0)
     
     # Sending dict
     print("Sending {}".format(status_dict))
