@@ -3,16 +3,17 @@ import socket
 import json
 
 
-status_dict = {"Video FPS"  : (24.3,0),
-                "Telem FPS" : (22.0,1),
-                "frame"     : (23832,2),
-                "Last FPC"  : (13,1),
-                "FOV"       : ((60.5, 55.6), 1),
-                "Sensor"    : ("VIS", 0),
-                "CVS state" : ("Scout", 1),
-                "Counter"   : (-999, 0),
-                "yaw"       : (0.0, 0),
-                "telem_yaw" : (0.0, 0),}
+status_dict = {"Video FPS"  : (24.3,0,0),
+                "Telem FPS" : (22.0,0,1),
+                "frame"     : (23832,0,2),
+                "Last FPC"  : (13,1,1),
+                "FOV"       : ((60.5, 55.6), 1, 1),
+                "Sensor"    : ("VIS", 0, 0),
+                "CVS state" : ("Scout", 0, 1),
+                "Counter"   : (-999, 0, 0),
+                "yaw"       : (0.0, 0, 0),
+                "telem_yaw_in" : (0.0, 1, 0),
+                "telem_yaw_out" : (0.0, 2, 0),}
 
 
 udp_monitor_addr = ("127.0.0.1", 5005)
@@ -23,12 +24,23 @@ counter = 0
 while True:
     counter += 1
     if counter < 150:
-        status_dict["Counter"] = (counter,1)
+        lst = list(status_dict["Counter"])
+        lst[0] = counter
+        lst[2] = 1
+        status_dict["Counter"] = tuple(lst)
     else:
-        status_dict["Counter"] = (counter,0)
-    status_dict["telem_yaw"] = ((0.5 * counter) % 360, 0)
-    status_dict["yaw"] = (360 - status_dict["telem_yaw"][0] + 60, 0)
+        lst = list(status_dict["Counter"])
+        lst[0] = counter
+        status_dict["Counter"] = tuple(lst)
     
+    lst = list(status_dict["telem_yaw_in"])
+    lst[0] = (0.5 * counter) % 360
+    status_dict["telem_yaw_in"] = tuple(lst)
+
+    lst = list(status_dict["telem_yaw_in"])
+    lst[0] = 360 - lst[0] + 60
+    status_dict["yaw"] = tuple(lst)
+
     # Sending dict
     print("Sending {}".format(status_dict))
     msg = str.encode(json.dumps(status_dict))

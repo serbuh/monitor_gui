@@ -119,19 +119,35 @@ class Compass_window():
 
     def update_compass(self, new_status_dict):
         # yaw arrow update
-        yaw = new_status_dict['yaw'][0]
+        yaw = new_status_dict['yaw'].value
         self.compass_arrow_yaw_text.set("yaw: {}".format(yaw)) # Update compass label's text
         x = self.compass_center_x + int(self.compass_radius * math.sin(math.radians(yaw)))
         y = self.compass_center_y - int(self.compass_radius * math.cos(math.radians(yaw)))
         self.compass_canvas.coords(self.compass_arrow_yaw, self.compass_center_x, self.compass_center_y, x, y)
         
         # telem_yaw arrow update
-        telem_yaw = new_status_dict['telem_yaw'][0]
+        telem_yaw = new_status_dict['telem_yaw'].value
         self.compass_arrow_telem_yaw_text.set("telem_yaw: {}".format(telem_yaw)) # Update compass label's text
         x = self.compass_center_x + int(self.compass_radius * math.sin(math.radians(telem_yaw)))
         y = self.compass_center_y - int(self.compass_radius * math.cos(math.radians(telem_yaw)))
         self.compass_canvas.coords(self.compass_arrow_telem_yaw, self.compass_center_x, self.compass_center_y, x, y)
 
+class StatusLine():
+    """
+    Class that implements one line in the message status list.
+    (e.g line can be: [value, group, color] )
+    """
+    def __init__(self, msgName, msgContent):
+        self.name = msgName
+        try:
+            self.value = msgContent[0]
+            self.group = msgContent[1]
+            self.color = msgContent[2]
+        except IndexError:
+            self.value = -999
+            self.group = 0
+            self.color = 3 # not defined color
+        
 
 class Window():
     def __init__(self, master, conn):
@@ -228,6 +244,12 @@ class Window():
     def update_all(self):
         new_status_dict = self.conn.recv_select() # Get new_status_dict from UDP socket
         if new_status_dict is not None:
+            
+            # Parse new status message with StatusLine class
+            for field_name in new_status_dict:
+                # replace {..., "msg_name": [val, group, color], ... } to {..., StatusLine(), ... }
+                new_status_dict[field_name] = StatusLine(field_name, new_status_dict[field_name])
+            
             self.update_labels_text(new_status_dict)
             if self.compass.draw_compass.get(): # if draw compass checkbox is active
                 self.compass.update_compass(new_status_dict)
@@ -249,8 +271,8 @@ class Window():
             else:
                 try:
                     ### Update the label's text (in existing label)
-                    self.curr_fields_dict[field_name][0].set(new_status_dict[field_name][0]) # Set text to the StringVar
-                    color_id = new_status_dict[field_name][1]
+                    self.curr_fields_dict[field_name][0].set(new_status_dict[field_name].value) # Set text to the StringVar
+                    color_id = new_status_dict[field_name].color
                     self.update_labels_color(field_name, color_id)
                 except TypeError as e:
                     print("Type error in field '{}': {}".format(field_name, e))
@@ -288,8 +310,8 @@ class Window():
             lbl_field_text_StringVar  = tk.StringVar()             # Create new StringVar
             # Update the label's text (in a new label)
             try:
-                lbl_field_text_StringVar.set(new_status_dict[field_name][0]) # Set text to the StringVar
-                color_id = new_status_dict[field_name][1]
+                lbl_field_text_StringVar.set(new_status_dict[field_name].value) # Set text to the StringVar
+                color_id = new_status_dict[field_name].color
             except TypeError as e:
                 print("Type error in field '{}': {}".format(field_name, e))
                 lbl_field_text_StringVar.set("Wrong type") # Set text to the StringVar
@@ -305,12 +327,14 @@ class Window():
             
     
     def update_labels_color(self, field_name, color_id):
-        if color_id == 0:
+        if color_id == 0: # good color
             color = "green"
-        elif color_id == 1:
+        elif color_id == 1: # not so good color
             color = "goldenrod1"
-        elif color_id == 2:
+        elif color_id == 2: # bad color
             color = "red"
+        elif color_id == 3: # not defined color
+            color = "white"
         self.curr_fields_dict[field_name][1].config(bg=color) # update lbl_field_name
         self.curr_fields_dict[field_name][2].config(bg=color) # update lbl_field_text
 
