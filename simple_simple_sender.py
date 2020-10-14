@@ -11,9 +11,9 @@ status_dict = {"Video FPS"  : (24.3,0,0),
                 "Sensor"    : ("VIS", 0, 0),
                 "CVS state" : ("Scout", 0, 1),
                 "Counter"   : (-999, 0, 0),
-                "yaw"       : (0.0, 0, 0),
-                "telem_yaw_in" : (0.0, 1, 0),
-                "telem_yaw_out" : (0.0, 2, 0),}
+                "yaw"       : (0.0, 0, "#fff000000"),
+                "telem_yaw_in" : (0.0, 1, "#000fff000"),
+                "telem_yaw_out" : (0.0, 2, "#000000fff"),}
 
 
 udp_monitor_addr = ("127.0.0.1", 5005)
@@ -37,8 +37,8 @@ while True:
     lst[0] = (0.5 * counter) % 360
     status_dict["telem_yaw_in"] = tuple(lst)
 
-    lst = list(status_dict["telem_yaw_in"])
-    lst[0] = 360 - lst[0] + 60
+    lst = list(status_dict["yaw"])
+    lst[0] = 360 - status_dict["telem_yaw_in"][0] + 60
     status_dict["yaw"] = tuple(lst)
 
     # Sending dict
