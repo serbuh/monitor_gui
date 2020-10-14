@@ -115,7 +115,7 @@ class Compass_window():
             #print(compass_msg.color)
 
             # update arrow and labels from new compass_msg
-            self.compass_arrows[compass_msg.name].text.set("{}: {} ({})".format(compass_msg.name, compass_msg.value, compass_msg.azimuth_value))# Update compass label's text
+            self.compass_arrows[compass_msg.name].text.set("{}: {:6.2f} ({})".format(compass_msg.name, compass_msg.azimuth_value, compass_msg.value))# Update compass label's text
             x = self.compass_center_x + int(self.compass_radius * math.sin(math.radians(compass_msg.value)))
             y = self.compass_center_y - int(self.compass_radius * math.cos(math.radians(compass_msg.value)))
             self.compass_canvas.coords(self.compass_arrows[compass_msg.name].arrow, self.compass_center_x, self.compass_center_y, x, y)
@@ -152,7 +152,7 @@ class StatusLine():
 
             # color handle
             received_color = msg_content[2]
-            if isinstance(received_color, int): # convert the color to string if the color was defined with enum and not as a '#000fff000' string
+            if isinstance(received_color, int): # convert the color to string if the color was defined with enum and not as a '#00ff00' string
                 if received_color == 0: # good color
                     self.color = "green"
                 elif received_color == 1: # not so good color
@@ -167,10 +167,10 @@ class StatusLine():
         except IndexError:
             self.value = -999
             self.group = 0
-            self.color = "#fffffffff" # not defined color
+            self.color = "#ffffff" # not defined color
         
         # Handle compass messages
-        compass_messages_list = ["yaw", "azimuth", "telem_yaw_in", "telem_yaw_out"] # classify string names like this as a compass messages
+        compass_messages_list = ["yaw", "azimuth", "telem_azimuth", "telem_yaw(blob)", "azimuth_out"] # classify string names like this as a compass messages
         if msg_name in compass_messages_list:
             # convert to the value between [0,360)
             self.azimuth_value = float(self.value) % 360 # add azimuth value field
