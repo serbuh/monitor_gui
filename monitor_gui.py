@@ -72,8 +72,6 @@ class Compass_window():
         self.compass_canvas = tk.Canvas(self.draw_compass_frame, width=self.compass_width, height=self.compass_width, background='white')
         self.compass_canvas.grid(row=0, column=0)
         
-        self.compass_arrows_list = {}
-        
         # Create dial
         try:
             from PIL import ImageTk, Image
@@ -99,6 +97,7 @@ class Compass_window():
 
     def remove_draw_compass_frame(self):
         self.draw_compass_frame.destroy()
+        self.compass_arrows = {}
 
     def create_compass_msg(self, compass_msg):
         self.compass_arrows[compass_msg.name] = CompassArrow(self, self.draw_compass_frame, compass_msg, len(self.compass_arrows))
