@@ -37,10 +37,12 @@ class UDP():
         return None
 
 class Compass_window():
-    def __init__(self, father_window):
+    def __init__(self, father_window, compass_msgs):
         self.draw_compass = tk.IntVar()
         self.draw_compass.set(0)
         self.father_window = father_window
+        self.compass_msgs = compass_msgs # existing compass messages in the system
+        self.compass_arrows = {} # existing arrows that represent 
 
     def draw_compass_toggle(self):
         checkbox_state = self.draw_compass.get()
@@ -62,29 +64,13 @@ class Compass_window():
                         )
         self.draw_compass_frame.grid(row=0, column=1, pady=0, rowspan = 2)
 
-        # Create compass yaw label
-        self.compass_arrow_yaw_text = tk.StringVar()  # Create new StringVar
-        self.compass_arrow_yaw_text.set("yaw:")       # Update the StringVar (label's) text
-        self.compass_arrow_yaw_color = 'SteelBlue3'   # Text color
-        # Create the lable itself and assign a text
-        self.compass_arrow_yaw_label = tk.Label(master = self.draw_compass_frame, textvariable = self.compass_arrow_yaw_text, anchor = "w", fg=self.compass_arrow_yaw_color)
-        self.compass_arrow_yaw_label.grid(row=0, column=0, sticky="W")
-
-        # Create compass telem_yaw label
-        self.compass_arrow_telem_yaw_text = tk.StringVar()  # Create new StringVar
-        self.compass_arrow_telem_yaw_text.set("telem_yaw:") # Update the StringVar (label's) text
-        self.compass_arrow_telem_yaw_color = 'Black'        # Text color
-        # Create the lable itself and assign a text
-        self.compass_arrow_telem_yaw_label = tk.Label(master = self.draw_compass_frame, textvariable = self.compass_arrow_telem_yaw_text, anchor = "w", fg=self.compass_arrow_telem_yaw_color)
-        self.compass_arrow_telem_yaw_label.grid(row=1, column=0, sticky="W")
-
         # Create compass canvas
         self.compass_width = 400 # width and height of Canvas
         self.compass_center_x = self.compass_width/2
         self.compass_center_y = self.compass_width/2
         self.compass_radius = int((self.compass_width/2) * 0.9)
         self.compass_canvas = tk.Canvas(self.draw_compass_frame, width=self.compass_width, height=self.compass_width, background='white')
-        self.compass_canvas.grid(row=2, column=0)
+        self.compass_canvas.grid(row=0, column=0)
         
         # Create dial
         try:
@@ -105,48 +91,90 @@ class Compass_window():
                 return self.create_oval(x-r, y-r, x+r, y+r, **kwargs)
             self.compass_canvas.create_circle = _create_circle
             self.compass_canvas.create_circle(self.compass_canvas, self.compass_center_x, self.compass_center_y, self.compass_radius, fill="pale green", outline="#999", width=4)
-            
-        # Create yaw arrow
-        self.compass_arrow_yaw = self.compass_canvas.create_line(self.compass_center_x, self.compass_center_y,self.compass_center_x, self.compass_center_y, fill=self.compass_arrow_yaw_color, width=3, arrow=tk.LAST)
-        # Create telem_yaw arrow
-        self.compass_arrow_telem_yaw = self.compass_canvas.create_line(self.compass_center_x, self.compass_center_y,self.compass_center_x, self.compass_center_y, fill=self.compass_arrow_telem_yaw_color, width=3, arrow=tk.LAST)
 
         # Update idle tasks to redraw things
         self.compass_canvas.update_idletasks()
 
     def remove_draw_compass_frame(self):
         self.draw_compass_frame.destroy()
+        self.compass_arrows = {}
+
+    def create_compass_msg(self, compass_msg):
+        self.compass_arrows[compass_msg.name] = CompassArrow(self, self.draw_compass_frame, compass_msg, len(self.compass_arrows))
 
     def update_compass(self, new_status_dict):
-        # yaw arrow update
-        yaw = new_status_dict['yaw'].value
-        self.compass_arrow_yaw_text.set("yaw: {}".format(yaw)) # Update compass label's text
-        x = self.compass_center_x + int(self.compass_radius * math.sin(math.radians(yaw)))
-        y = self.compass_center_y - int(self.compass_radius * math.cos(math.radians(yaw)))
-        self.compass_canvas.coords(self.compass_arrow_yaw, self.compass_center_x, self.compass_center_y, x, y)
-        
-        # telem_yaw arrow update
-        telem_yaw = new_status_dict['telem_yaw'].value
-        self.compass_arrow_telem_yaw_text.set("telem_yaw: {}".format(telem_yaw)) # Update compass label's text
-        x = self.compass_center_x + int(self.compass_radius * math.sin(math.radians(telem_yaw)))
-        y = self.compass_center_y - int(self.compass_radius * math.cos(math.radians(telem_yaw)))
-        self.compass_canvas.coords(self.compass_arrow_telem_yaw, self.compass_center_x, self.compass_center_y, x, y)
+        for compass_msg in self.compass_msgs.values():
+            if compass_msg.name not in self.compass_arrows:
+                self.create_compass_msg(compass_msg) # Create CompassArrow and add to compass_arrows list
+            
+            #print("new msg:")
+            #print(compass_msg.name)
+            #print(compass_msg.value)
+            #print(compass_msg.azimuth_value)
+            #print(compass_msg.group)
+            #print(compass_msg.color)
+
+            # update arrow and labels from new compass_msg
+            self.compass_arrows[compass_msg.name].text.set("{}: {} ({})".format(compass_msg.name, compass_msg.value, compass_msg.azimuth_value))# Update compass label's text
+            x = self.compass_center_x + int(self.compass_radius * math.sin(math.radians(compass_msg.value)))
+            y = self.compass_center_y - int(self.compass_radius * math.cos(math.radians(compass_msg.value)))
+            self.compass_canvas.coords(self.compass_arrows[compass_msg.name].arrow, self.compass_center_x, self.compass_center_y, x, y)
+
+
+class CompassArrow():
+    """
+    Class that implements the compass arrow and its label
+    """
+    def __init__(self, compass_window_instance, master_frame, compass_msg, arrow_list_len):
+        self.id = arrow_list_len
+        self.text = tk.StringVar()              # Create new StringVar
+        self.text.set("{}:".format(compass_msg.name))       # Update the StringVar (label's) text
+        # Create the lable itself and assign a text
+        self.label = tk.Label(master = master_frame, textvariable = self.text, anchor = "w", fg=compass_msg.color) # fg -> Text color
+        self.label.grid(row=self.id + 1, column=0, sticky="W") # row = id + 1 (because 0 is the compass image)
+
+        # Create arrow
+        self.arrow = compass_window_instance.compass_canvas.create_line(compass_window_instance.compass_center_x, compass_window_instance.compass_center_y,compass_window_instance.compass_center_x, compass_window_instance.compass_center_y, fill=compass_msg.color, width=3, arrow=tk.LAST)
+
+
 
 class StatusLine():
     """
     Class that implements one line in the message status list.
     (e.g line can be: [value, group, color] )
+    Items which contains "compass" keywords will be added to the compassMsgs list
     """
-    def __init__(self, msgName, msgContent):
-        self.name = msgName
+    def __init__(self, msg_name, msg_content, compass_msgs):
+        self.name = msg_name
         try:
-            self.value = msgContent[0]
-            self.group = msgContent[1]
-            self.color = msgContent[2]
+            self.value = msg_content[0]
+            self.group = msg_content[1]
+
+            # color handle
+            received_color = msg_content[2]
+            if isinstance(received_color, int): # convert the color to string if the color was defined with enum and not as a '#000fff000' string
+                if received_color == 0: # good color
+                    self.color = "green"
+                elif received_color == 1: # not so good color
+                    self.color = "goldenrod1"
+                elif received_color == 2: # bad color
+                    self.color = "red"
+                elif received_color == 3: # not defined color
+                    self.color = "white"
+            else: # if color was already defined as a string
+                self.color = msg_content[2]
+
         except IndexError:
             self.value = -999
             self.group = 0
-            self.color = 3 # not defined color
+            self.color = "#fffffffff" # not defined color
+        
+        # Handle compass messages
+        if ("yaw" in msg_name) or ("azimuth" in msg_name):
+            # convert to the value between [0,360)
+            self.azimuth_value = self.value % 360 # add azimuth value field
+            # add message to the compass msgs list
+            compass_msgs[msg_name] = self
         
 
 class Window():
@@ -166,7 +194,9 @@ class Window():
         self.master.wm_attributes("-topmost", 1)
         
         # Compass
-        self.compass = Compass_window(self)
+        self.compass_msgs = {} # messages for the compass
+        self.compass = Compass_window(self, self.compass_msgs)
+        
 
         self.curr_fields_dict = {} # Create local labels field names list
         self.add_frames()
@@ -248,8 +278,8 @@ class Window():
             # Parse new status message with StatusLine class
             for field_name in new_status_dict:
                 # replace {..., "msg_name": [val, group, color], ... } to {..., StatusLine(), ... }
-                new_status_dict[field_name] = StatusLine(field_name, new_status_dict[field_name])
-            
+                new_status_dict[field_name] = StatusLine(field_name, new_status_dict[field_name], self.compass_msgs)
+
             self.update_labels_text(new_status_dict)
             if self.compass.draw_compass.get(): # if draw compass checkbox is active
                 self.compass.update_compass(new_status_dict)
@@ -272,13 +302,11 @@ class Window():
                 try:
                     ### Update the label's text (in existing label)
                     self.curr_fields_dict[field_name][0].set(new_status_dict[field_name].value) # Set text to the StringVar
-                    color_id = new_status_dict[field_name].color
-                    self.update_labels_color(field_name, color_id)
+                    self.update_labels_color(field_name, new_status_dict[field_name].color)
                 except TypeError as e:
                     print("Type error in field '{}': {}".format(field_name, e))
                     self.curr_fields_dict[field_name][0].set("Wrong type") # Set text to the StringVar
-                    color_id = 1 # set the color of the wrong type to 1 hardcoded
-                    self.update_labels_color(field_name, color_id)
+                    self.update_labels_color(field_name, "#fffffffff")
                 except Exception as e:
                     print("Exception in field '{}': {}".format(field_name, e))
                     print("Let's see.. a new exception during putting new_status_dict into GUI")
@@ -311,7 +339,7 @@ class Window():
             # Update the label's text (in a new label)
             try:
                 lbl_field_text_StringVar.set(new_status_dict[field_name].value) # Set text to the StringVar
-                color_id = new_status_dict[field_name].color
+                color = new_status_dict[field_name].color
             except TypeError as e:
                 print("Type error in field '{}': {}".format(field_name, e))
                 lbl_field_text_StringVar.set("Wrong type") # Set text to the StringVar
@@ -323,18 +351,10 @@ class Window():
             # Save label's and StringVar to the list
             self.curr_fields_dict[field_name] = [lbl_field_text_StringVar, lbl_field_name, lbl_field_text]
             # update label's color
-            self.update_labels_color(field_name, color_id)
+            self.update_labels_color(field_name, color)
             
     
-    def update_labels_color(self, field_name, color_id):
-        if color_id == 0: # good color
-            color = "green"
-        elif color_id == 1: # not so good color
-            color = "goldenrod1"
-        elif color_id == 2: # bad color
-            color = "red"
-        elif color_id == 3: # not defined color
-            color = "white"
+    def update_labels_color(self, field_name, color):
         self.curr_fields_dict[field_name][1].config(bg=color) # update lbl_field_name
         self.curr_fields_dict[field_name][2].config(bg=color) # update lbl_field_text
 
