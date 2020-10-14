@@ -70,7 +70,7 @@ class Compass_window():
         self.compass_center_y = self.compass_width/2
         self.compass_radius = int((self.compass_width/2) * 0.9)
         self.compass_canvas = tk.Canvas(self.draw_compass_frame, width=self.compass_width, height=self.compass_width, background='white')
-        self.compass_canvas.grid(row=2, column=0)
+        self.compass_canvas.grid(row=0, column=0)
         
         self.compass_arrows_list = {}
         
@@ -108,17 +108,15 @@ class Compass_window():
             if compass_msg.name not in self.compass_arrows:
                 self.create_compass_msg(compass_msg) # Create CompassArrow and add to compass_arrows list
             
-            #new msg:
-            print("new msg:")
-            print(compass_msg.name)
-            print(compass_msg.value)
-            print(compass_msg.azimuth_value)
-            print(compass_msg.group)
-            print(compass_msg.color)
+            #print("new msg:")
+            #print(compass_msg.name)
+            #print(compass_msg.value)
+            #print(compass_msg.azimuth_value)
+            #print(compass_msg.group)
+            #print(compass_msg.color)
 
-            print("existing arrow:")
-            self.compass_arrows[compass_msg.name].id
-            self.compass_arrows[compass_msg.name].text.set("yaw: {} ({})".format(compass_msg.value, compass_msg.azimuth_value))# Update compass label's text
+            # update arrow and labels from new compass_msg
+            self.compass_arrows[compass_msg.name].text.set("{}: {} ({})".format(compass_msg.name, compass_msg.value, compass_msg.azimuth_value))# Update compass label's text
             x = self.compass_center_x + int(self.compass_radius * math.sin(math.radians(compass_msg.value)))
             y = self.compass_center_y - int(self.compass_radius * math.cos(math.radians(compass_msg.value)))
             self.compass_canvas.coords(self.compass_arrows[compass_msg.name].arrow, self.compass_center_x, self.compass_center_y, x, y)
@@ -134,7 +132,7 @@ class CompassArrow():
         self.text.set("{}:".format(compass_msg.name))       # Update the StringVar (label's) text
         # Create the lable itself and assign a text
         self.label = tk.Label(master = master_frame, textvariable = self.text, anchor = "w", fg=compass_msg.color) # fg -> Text color
-        self.label.grid(row=self.id, column=0, sticky="W")
+        self.label.grid(row=self.id + 1, column=0, sticky="W") # row = id + 1 (because 0 is the compass image)
 
         # Create arrow
         self.arrow = compass_window_instance.compass_canvas.create_line(compass_window_instance.compass_center_x, compass_window_instance.compass_center_y,compass_window_instance.compass_center_x, compass_window_instance.compass_center_y, fill=compass_msg.color, width=3, arrow=tk.LAST)
