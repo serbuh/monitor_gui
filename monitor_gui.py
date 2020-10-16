@@ -37,6 +37,9 @@ class UDP():
         return None
 
 class Compass_window():
+    '''
+    Class that implements window that containes compass
+    '''
     def __init__(self, father_window, compass_msgs):
         self.draw_compass = tk.IntVar()
         self.draw_compass.set(0)
@@ -137,6 +140,87 @@ class CompassArrow():
         self.arrow = compass_window_instance.compass_canvas.create_line(compass_window_instance.compass_center_x, compass_window_instance.compass_center_y,compass_window_instance.compass_center_x, compass_window_instance.compass_center_y, fill=compass_msg.color, width=3, arrow=tk.LAST)
 
 
+class StatusWindow():
+    '''
+    Window that containes Status messages
+    '''
+    def __init__(self, father_window):
+        self.clear_fields()
+        self.father_window = father_window
+
+    def clear_fields(self):
+        self.curr_fields_dict = {} # Zeroing current fields list
+
+    def update_labels_text(self, new_status_dict):
+        '''
+        Refresh the text of the existing labels
+
+        If new label detected => add_to_field_dict() is called and the list of the local labels is updated
+        '''
+        
+        for field_name in new_status_dict:
+            if field_name not in self.curr_fields_dict: # we have a new status field
+                self.add_to_field_dict(field_name, new_status_dict)
+            else:
+                try:
+                    ### Update the label's text (in existing label)
+                    self.curr_fields_dict[field_name][0].set(new_status_dict[field_name].value) # Set text to the StringVar
+                    self.update_labels_color(field_name, new_status_dict[field_name].color)
+                except TypeError as e:
+                    print("Type error in field '{}': {}".format(field_name, e))
+                    self.curr_fields_dict[field_name][0].set("Wrong type") # Set text to the StringVar
+                    self.update_labels_color(field_name, "#fffffffff")
+                except Exception as e:
+                    print("Exception in field '{}': {}".format(field_name, e))
+                    print("Let's see.. a new exception during putting new_status_dict into GUI")
+                    import pdb; pdb.set_trace()
+
+    def add_to_field_dict(self, field_name, new_status_dict):
+        '''
+        Add new labels to the current labels list (self.curr_fields_dict)
+        '''
+        print("Add new field to the fields list: '{}'".format(field_name))
+        # Add labels in frames to the main window (root)
+        self.max_name_len = max({len(x) for x in new_status_dict.keys()})
+        self.max_value_len = max({len(str(new_status_dict[x])) for x in new_status_dict.keys()})
+        
+        row_count = len(self.curr_fields_dict)
+
+        # Create subframe for the field
+        frm_msg = tk.Frame(master=self.father_window.dynamic_status_frame,
+                    width=50,
+                    height=10,
+                    bg="grey",
+                    borderwidth=0,
+                    )
+        self.father_window.dynamic_status_frame.rowconfigure(row_count, weight=1, minsize=20)
+        self.father_window.dynamic_status_frame.columnconfigure(0, weight=1, minsize=50)
+        frm_msg.grid(row=row_count, column=0, pady=0) # +1 because we have a frame of constant things before
+        
+        # Add new Label
+        lbl_field_text_StringVar  = tk.StringVar()             # Create new StringVar
+        # Update the label's text (in a new label)
+        try:
+            lbl_field_text_StringVar.set(new_status_dict[field_name].value) # Set text to the StringVar
+            color = new_status_dict[field_name].color
+        except TypeError as e:
+            print("Type error in field '{}': {}".format(field_name, e))
+            lbl_field_text_StringVar.set("Wrong type") # Set text to the StringVar
+        # Create the lable itself and assign a text
+        lbl_field_name = tk.Label(master = frm_msg, width=self.max_name_len, relief=tk.RAISED, bd=2, text = field_name)
+        lbl_field_name.grid(row=0, column=0)
+        lbl_field_text = tk.Label(master = frm_msg, width=self.max_value_len, relief=tk.RAISED, bd=2, textvariable = lbl_field_text_StringVar) # bind to StringVar
+        lbl_field_text.grid(row=0, column=1)
+        # Save label's and StringVar to the list
+        self.curr_fields_dict[field_name] = [lbl_field_text_StringVar, lbl_field_name, lbl_field_text]
+        # update label's color
+        self.update_labels_color(field_name, color)
+            
+    
+    def update_labels_color(self, field_name, color):
+        self.curr_fields_dict[field_name][1].config(bg=color) # update lbl_field_name
+        self.curr_fields_dict[field_name][2].config(bg=color) # update lbl_field_text
+
 
 class StatusLine():
     """
@@ -198,8 +282,10 @@ class Window():
         self.compass_msgs = {} # messages for the compass
         self.compass = Compass_window(self, self.compass_msgs)
         
-
+        # Statuses Window
         self.curr_fields_dict = {} # Create local labels field names list
+        self.status_window = StatusWindow(self)
+
         self.add_frames()
         self.master.after(10, self.update_all)
 
@@ -270,7 +356,7 @@ class Window():
     def clear_button_click(self):
         for child in self.dynamic_status_frame.winfo_children():
             child.destroy()
-        self.curr_fields_dict = {} # Zeroing current fields list
+        self.status_window.clear_fields()
 
     def update_all(self):
         new_status_dict = self.conn.recv_select() # Get new_status_dict from UDP socket
@@ -281,83 +367,13 @@ class Window():
                 # replace {..., "msg_name": [val, group, color], ... } to {..., StatusLine(), ... }
                 new_status_dict[field_name] = StatusLine(field_name, new_status_dict[field_name], self.compass_msgs)
 
-            self.update_labels_text(new_status_dict)
+            self.status_window.update_labels_text(new_status_dict)
             if self.compass.draw_compass.get(): # if draw compass checkbox is active
                 self.compass.update_compass(new_status_dict)
         else:
             pass # No new_status_dict received in this iteration
         
         self.master.after(10, self.update_all)
-
-    def update_labels_text(self, new_status_dict):
-        '''
-        Refresh the text of the existing labels
-
-        If new label detected => add_to_field_dict() is called and the list of the local labels is updated
-        '''
-        
-        for field_name in new_status_dict:
-            if field_name not in self.curr_fields_dict: # we have a new status field
-                self.add_to_field_dict(field_name, new_status_dict)
-            else:
-                try:
-                    ### Update the label's text (in existing label)
-                    self.curr_fields_dict[field_name][0].set(new_status_dict[field_name].value) # Set text to the StringVar
-                    self.update_labels_color(field_name, new_status_dict[field_name].color)
-                except TypeError as e:
-                    print("Type error in field '{}': {}".format(field_name, e))
-                    self.curr_fields_dict[field_name][0].set("Wrong type") # Set text to the StringVar
-                    self.update_labels_color(field_name, "#fffffffff")
-                except Exception as e:
-                    print("Exception in field '{}': {}".format(field_name, e))
-                    print("Let's see.. a new exception during putting new_status_dict into GUI")
-                    import pdb; pdb.set_trace()
-
-    def add_to_field_dict(self, field_name, new_status_dict):
-        '''
-        Add new labels to the current labels list (self.curr_fields_dict)
-        '''
-        print("Add new field to the fields list: '{}'".format(field_name))
-        # Add labels in frames to the main window (root)
-        self.max_name_len = max({len(x) for x in new_status_dict.keys()})
-        self.max_value_len = max({len(str(new_status_dict[x])) for x in new_status_dict.keys()})
-        
-        row_count = len(self.curr_fields_dict)
-
-        # Create subframe for the field
-        frm_msg = tk.Frame(master=self.dynamic_status_frame,
-                    width=50,
-                    height=10,
-                    bg="grey",
-                    borderwidth=0,
-                    )
-        self.dynamic_status_frame.rowconfigure(row_count, weight=1, minsize=20)
-        self.dynamic_status_frame.columnconfigure(0, weight=1, minsize=50)
-        frm_msg.grid(row=row_count, column=0, pady=0) # +1 because we have a frame of constant things before
-        
-        # Add new Label
-        lbl_field_text_StringVar  = tk.StringVar()             # Create new StringVar
-        # Update the label's text (in a new label)
-        try:
-            lbl_field_text_StringVar.set(new_status_dict[field_name].value) # Set text to the StringVar
-            color = new_status_dict[field_name].color
-        except TypeError as e:
-            print("Type error in field '{}': {}".format(field_name, e))
-            lbl_field_text_StringVar.set("Wrong type") # Set text to the StringVar
-        # Create the lable itself and assign a text
-        lbl_field_name = tk.Label(master = frm_msg, width=self.max_name_len, relief=tk.RAISED, bd=2, text = field_name)
-        lbl_field_name.grid(row=0, column=0)
-        lbl_field_text = tk.Label(master = frm_msg, width=self.max_value_len, relief=tk.RAISED, bd=2, textvariable = lbl_field_text_StringVar) # bind to StringVar
-        lbl_field_text.grid(row=0, column=1)
-        # Save label's and StringVar to the list
-        self.curr_fields_dict[field_name] = [lbl_field_text_StringVar, lbl_field_name, lbl_field_text]
-        # update label's color
-        self.update_labels_color(field_name, color)
-            
-    
-    def update_labels_color(self, field_name, color):
-        self.curr_fields_dict[field_name][1].config(bg=color) # update lbl_field_name
-        self.curr_fields_dict[field_name][2].config(bg=color) # update lbl_field_text
 
     def q_pressed(self, event):
         print("'Q' pressed. Exit.")
