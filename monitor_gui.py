@@ -254,7 +254,7 @@ class StatusLine():
             self.color = "#ffffff" # not defined color
         
         # Handle compass messages
-        compass_messages_list = ["yaw", "azimuth", "telem_azimuth", "telem_yaw(blob)", "azimuth_out"] # classify string names like this as a compass messages
+        compass_messages_list = ["yaw", "azimuth", "telem_azimuth", "blob: yaw", "blob: image_mapper_yaw"] # classify string names like this as a compass messages
         if msg_name in compass_messages_list:
             # convert to the value between [0,360)
             self.azimuth_value = float(self.value) % 360 # add azimuth value field
