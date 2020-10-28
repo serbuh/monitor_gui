@@ -28,13 +28,31 @@ class UDP():
         except BlockingIOError as e:
             print("Socket error: {}".format(e))
     
-    def recv_select(self):
-        readable, writable, exceptional = select.select([self.sock], [], [self.sock], 0)
-        for s in readable:
-            if s is self.sock:
-                recv_data, address = s.recvfrom(4096)
-                return json.loads(recv_data) # return dict
-        return None
+    # Currently not in use. Using recv_select_list instead
+    #def recv_select(self):
+    #    readable, writable, exceptional = select.select([self.sock], [], [self.sock], 0)
+    #    for s in readable:
+    #        if s is self.sock:
+    #            recv_data, address = s.recvfrom(4096)
+    #            return json.loads(recv_data) # return dict
+    #    return None
+
+    
+    def recv_select_list(self):
+        chunk_list = []
+        new_data_available = True
+        while new_data_available:
+            readable, writable, exceptional = select.select([self.sock], [], [self.sock], 0)
+            if len(readable) == 0:
+                new_data_available = False
+            for s in readable:
+                if s is self.sock:
+                    recv_data, address = s.recvfrom(4096)
+                    chunk_list.append(json.loads(recv_data))
+        
+        return chunk_list # return dict
+            
+
 
 class Compass_window():
     '''
@@ -359,19 +377,20 @@ class Window():
         self.status_window.clear_fields()
 
     def update_all(self):
-        new_status_dict = self.conn.recv_select() # Get new_status_dict from UDP socket
-        if new_status_dict is not None:
-            
-            # Parse new status message with StatusLine class
-            for field_name in new_status_dict:
-                # replace {..., "msg_name": [val, group, color], ... } to {..., StatusLine(), ... }
-                new_status_dict[field_name] = StatusLine(field_name, new_status_dict[field_name], self.compass_msgs)
+        new_status_dict_list = self.conn.recv_select_list() # Get new_status_dict from UDP socket
+        for new_status_dict in new_status_dict_list:
+            if new_status_dict is not None:
+                
+                # Parse new status message with StatusLine class
+                for field_name in new_status_dict:
+                    # replace {..., "msg_name": [val, group, color], ... } to {..., StatusLine(), ... }
+                    new_status_dict[field_name] = StatusLine(field_name, new_status_dict[field_name], self.compass_msgs)
 
-            self.status_window.update_labels_text(new_status_dict)
-            if self.compass.draw_compass.get(): # if draw compass checkbox is active
-                self.compass.update_compass(new_status_dict)
-        else:
-            pass # No new_status_dict received in this iteration
+                self.status_window.update_labels_text(new_status_dict)
+                if self.compass.draw_compass.get(): # if draw compass checkbox is active
+                    self.compass.update_compass(new_status_dict)
+            else:
+                pass # No new_status_dict received in this iteration
         
         self.master.after(10, self.update_all)
 
