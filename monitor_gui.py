@@ -48,6 +48,8 @@ class UDP():
             for s in readable:
                 if s is self.sock:
                     recv_data, address = s.recvfrom(4096)
+                    if isinstance(recv_data, bytes):
+                        recv_data = recv_data.decode() # recvfrom returnes bytes in python3. json.loads() receives str.
                     chunk_list.append(json.loads(recv_data))
         
         return chunk_list # return dict
