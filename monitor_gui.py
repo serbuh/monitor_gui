@@ -28,7 +28,7 @@ class UDP():
         except BlockingIOError as e:
             print("Socket error: {}".format(e))
     
-    def recv_select_list(self):
+    def recv_select_list(self): # returns a list of a new status batches [{batch}, {batch}, {batch}]
         chunk_list = []
         new_data_available = True
         while new_data_available:
@@ -162,47 +162,48 @@ class StatusWindow():
         self.curr_status_lines_gui = {} # Zeroing current status lines list
         self.curr_status_groups_gui = {} # Zeroing current status groups list
 
-    def update_labels_text(self, NewStatusBatchMsg):
+    def update_labels_text(self, StatusLinesList):
         '''
         Refresh the text of the existing labels
 
         If new label detected => create_new_status_line() is called and the list of the local labels is updated
         '''
         
-        for field_name in NewStatusBatchMsg:
-            group = NewStatusBatchMsg[field_name].group
-            if group not in self.curr_status_groups_gui:
-                self.create_new_status_group(field_name, NewStatusBatchMsg)
-
-            if field_name not in self.curr_status_lines_gui: # we have a new status field
-                self.create_new_status_line(field_name, NewStatusBatchMsg)
+        # iterate over a messages in batch
+        for oneStatusLine in StatusLinesList:
+            if oneStatusLine.name not in self.curr_status_lines_gui: # we have a new status field
+                self.create_new_status_line(oneStatusLine)
             else:
                 try:
                     ### Update the label's text (in existing label)
-                    self.curr_status_lines_gui[field_name][0].set(NewStatusBatchMsg[field_name].value) # Set text to the StringVar
-                    self.update_labels_color(field_name, NewStatusBatchMsg[field_name].color)
+                    self.curr_status_lines_gui[oneStatusLine.name][0].set(oneStatusLine.value) # Set text to the StringVar
+                    self.update_labels_color(oneStatusLine.name, oneStatusLine.color)
                 except TypeError as e:
-                    print("Type error in field '{}': {}".format(field_name, e))
-                    self.curr_status_lines_gui[field_name][0].set("Wrong type") # Set text to the StringVar
-                    self.update_labels_color(field_name, "#fffffffff")
+                    print("Type error in field '{}': {}".format(oneStatusLine.name, e))
+                    self.curr_status_lines_gui[oneStatusLine.name][0].set("Wrong type") # Set text to the StringVar
+                    self.update_labels_color(oneStatusLine.name, "#fffffffff")
                 except Exception as e:
-                    print("Exception in field '{}': {}".format(field_name, e))
+                    print("Exception in field '{}': {}".format(oneStatusLine.name, e))
                     print("Let's see.. a new exception during putting NewStatusBatchMsg into GUI")
                     import pdb; pdb.set_trace()
 
-    def create_new_status_group(self, field_name, NewStatusBatchMsg):
-        group = NewStatusBatchMsg[field_name].group
+    def create_new_status_group(self, oneStatusLine):
+        group = oneStatusLine.group
         print("New group: {}".format(group))
         self.curr_status_groups_gui[group] = group # dict of {"group": "group"}
 
-    def create_new_status_line(self, field_name, NewStatusBatchMsg):
+    def create_new_status_line(self, oneStatusLine):
         '''
         Add new labels to the current labels list (self.curr_status_lines_gui)
         '''
-        print("New status line: '{}'".format(field_name))
+        
+        # check if a group exist
+        if oneStatusLine.group not in self.curr_status_groups_gui:
+            self.create_new_status_group(oneStatusLine)
+        
+        print("New status line: '{}'".format(oneStatusLine.name))
         # Add labels in frames to the main window (root)
-        self.max_name_len = max({len(x) for x in NewStatusBatchMsg.keys()})
-        self.max_value_len = max({len(str(NewStatusBatchMsg[x])) for x in NewStatusBatchMsg.keys()})
+        
         
         row_count = len(self.curr_status_lines_gui)
 
@@ -221,20 +222,22 @@ class StatusWindow():
         lbl_field_text_StringVar  = tk.StringVar()             # Create new StringVar
         # Update the label's text (in a new label)
         try:
-            lbl_field_text_StringVar.set(NewStatusBatchMsg[field_name].value) # Set text to the StringVar
-            color = NewStatusBatchMsg[field_name].color
+            lbl_field_text_StringVar.set(oneStatusLine.value) # Set text to the StringVar
         except TypeError as e:
-            print("Type error in field '{}': {}".format(field_name, e))
+            print("Type error in field '{}': {}".format(oneStatusLine.name, e))
             lbl_field_text_StringVar.set("Wrong type") # Set text to the StringVar
+        
         # Create the lable itself and assign a text
-        lbl_field_name = tk.Label(master = frm_msg, width=self.max_name_len, relief=tk.RAISED, bd=2, text = field_name)
+        max_name_len = max(50, len(oneStatusLine.name))
+        max_value_len = max(50, len(oneStatusLine.name))
+        lbl_field_name = tk.Label(master = frm_msg, width=max_name_len, relief=tk.RAISED, bd=2, text = oneStatusLine.name)
         lbl_field_name.grid(row=0, column=0)
-        lbl_field_text = tk.Label(master = frm_msg, width=self.max_value_len, relief=tk.RAISED, bd=2, textvariable = lbl_field_text_StringVar) # bind to StringVar
+        lbl_field_text = tk.Label(master = frm_msg, width=max_value_len, relief=tk.RAISED, bd=2, textvariable = lbl_field_text_StringVar) # bind to StringVar
         lbl_field_text.grid(row=0, column=1)
         # Save label's and StringVar to the list
-        self.curr_status_lines_gui[field_name] = [lbl_field_text_StringVar, lbl_field_name, lbl_field_text]
+        self.curr_status_lines_gui[oneStatusLine.name] = [lbl_field_text_StringVar, lbl_field_name, lbl_field_text]
         # update label's color
-        self.update_labels_color(field_name, color)
+        self.update_labels_color(oneStatusLine.name, oneStatusLine.color)
 
     def update_labels_color(self, field_name, color):
         self.curr_status_lines_gui[field_name][1].config(bg=color) # update lbl_field_name
@@ -377,16 +380,19 @@ class Window():
         self.status_window.clear_fields()
 
     def update_all(self):
-        NewStatusLines = self.conn.recv_select_list() # Get NewStatusLines from UDP socket
-        for NewStatusBatchMsg in NewStatusLines:
+        NewStatusBatchList = self.conn.recv_select_list() # Get NewStatusLines from UDP socket
+        # iterate over a list of status line batches
+        for NewStatusBatchMsg in NewStatusBatchList:
             if NewStatusBatchMsg is not None:
                 
-                # Parse new status message with OneStatusLine class
+                StatusLinesList = []
+                # Parse new batch of status lines to list of OneStatusLine classes
                 for field_name in NewStatusBatchMsg:
-                    # replace {..., "msg_name": [val, group, color], ... } to {..., "msg_name": OneStatusLine(), ... }
-                    NewStatusBatchMsg[field_name] = OneStatusLine(field_name, NewStatusBatchMsg[field_name], self.compass_msgs)
+                    # parse {..., "msg_name": [val, group, color], ... } to [..., OneStatusLine(), ... }
+                    StatusLinesList.append(OneStatusLine(field_name, NewStatusBatchMsg[field_name], self.compass_msgs))
 
-                self.status_window.update_labels_text(NewStatusBatchMsg)
+                self.status_window.update_labels_text(StatusLinesList)
+
                 if self.compass.draw_compass.get(): # if draw compass checkbox is active
                     self.compass.update_compass()
             else:
