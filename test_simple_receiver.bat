@@ -1,1 +1,0 @@
-python simple_simple_receiver.py
