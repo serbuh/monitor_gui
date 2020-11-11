@@ -3,17 +3,17 @@ import socket
 import json
 
 
-status_dict = {"Video FPS"  : (24.3,0,0),
-                "Telem FPS" : (22.0,0,1),
-                "frame"     : (23832,0,2),
-                "Last FPC"  : (13,1,1),
-                "FOV"       : ((60.5, 55.6), 1, 1),
-                "Sensor"    : ("VIS", 0, 0),
-                "CVS state" : ("Scout", 0, 1),
-                "Counter"   : (-999, 0, 0),
-                "yaw"       : (0.0, 0, "#ff0000"),
-                "telem_azimuth" : (0.0, 1, "#00ff00"),
-                "azimuth_out" : (91.0, 2, "#0000ff"),}
+status_dict = {"Video FPS"  : (24.3,"Telem",0),
+                "Telem FPS" : (22.0,"Telem",1),
+                "frame"     : (23832,"Telem",2),
+                "Last FPC"  : (13,"Status",1),
+                "FOV"       : ((60.5, 55.6), "Status", 1),
+                "Sensor"    : ("VIS", "Status", 0),
+                "CVS state" : ("Scout", "Status", 1),
+                "Counter"   : (-999, "Status", 0),
+                "yaw"       : (0.0, "Compass", "#ff0000"),
+                "telem_azimuth" : (0.0, "Compass", "#00ff00"),
+                "azimuth_out" : (91.0, "Compass", "#0000ff"),}
 
 
 udp_monitor_addr = ("127.0.0.1", 5005)
