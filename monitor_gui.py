@@ -45,8 +45,7 @@ class UDP():
         return chunk_list # return dict
             
 
-
-class Compass_window():
+class CompassWindow():
     '''
     Class that implements window that containes compass
     '''
@@ -152,60 +151,46 @@ class CompassArrow():
 
 class StatusWindow():
     '''
-    Window that containes Status messages
+    Status messages frame
     '''
     def __init__(self, father_window):
-        self.clear_fields()
+        self.curr_status_groups = {} # Zeroing current status groups list
+        self.curr_status_lines = {} # Zeroing current status lines list
         self.father_window = father_window
 
-    def clear_fields(self):
-        self.curr_status_lines_gui = {} # Zeroing current status lines list
-        self.curr_status_groups_gui = {} # Zeroing current status groups list
+    def clear_status_lines(self):
+        self.curr_status_groups = {} # Zeroing current status groups list
+        self.curr_status_lines = {} # Zeroing current status lines list
 
-    def update_labels_text(self, StatusLinesList):
+    def get_new_status_status_lines(self, StatusLinesList):
         '''
-        Refresh the text of the existing labels
-
-        If new label detected => create_new_status_line() is called and the list of the local labels is updated
+        New status line received  
+        Update groups and labels
         '''
-        
-        # iterate over a messages in batch
+        # iterate over a batch of new status lines
         for oneStatusLine in StatusLinesList:
-            if oneStatusLine.name not in self.curr_status_lines_gui: # we have a new status field
-                self.create_new_status_line(oneStatusLine)
+            if oneStatusLine.group not in self.curr_status_groups:
+                self.create_new_status_group(oneStatusLine) # New group
             else:
-                try:
-                    ### Update the label's text (in existing label)
-                    self.curr_status_lines_gui[oneStatusLine.name][0].set(oneStatusLine.value) # Set text to the StringVar
-                    self.update_labels_color(oneStatusLine.name, oneStatusLine.color)
-                except TypeError as e:
-                    print("Type error in field '{}': {}".format(oneStatusLine.name, e))
-                    self.curr_status_lines_gui[oneStatusLine.name][0].set("Wrong type") # Set text to the StringVar
-                    self.update_labels_color(oneStatusLine.name, "#fffffffff")
-                except Exception as e:
-                    print("Exception in field '{}': {}".format(oneStatusLine.name, e))
-                    print("Let's see.. a new exception during putting NewStatusBatchMsg into GUI")
-                    import pdb; pdb.set_trace()
+                if oneStatusLine.name not in self.curr_status_lines:
+                    self.create_new_status_line(oneStatusLine) # New status line in existing group
+                else:
+                    self.handle_existing_status_line(oneStatusLine) # Existing status line in existing group
 
     def create_new_status_group(self, oneStatusLine):
         group = oneStatusLine.group
         print("New group: {}".format(group))
-        self.curr_status_groups_gui[group] = group # dict of {"group": "group"}
+        self.curr_status_groups[group] = group # dict of {"group": "group"}
 
     def create_new_status_line(self, oneStatusLine):
         '''
-        Add new labels to the current labels list (self.curr_status_lines_gui)
+        Add new labels to the current labels list (self.curr_status_lines)
         '''
-        
-        # check if a group exist
-        if oneStatusLine.group not in self.curr_status_groups_gui:
-            self.create_new_status_group(oneStatusLine)
         
         print("New status line: '{}'".format(oneStatusLine.name))
         # Add labels in frames to the main window (root)
         
-        
-        row_count = len(self.curr_status_lines_gui)
+        row_count = len(self.curr_status_lines)
 
         # Create subframe for the field
         frm_msg = tk.Frame(master=self.father_window.dynamic_status_frame,
@@ -235,14 +220,32 @@ class StatusWindow():
         lbl_field_text = tk.Label(master = frm_msg, width=max_value_len, relief=tk.RAISED, bd=2, textvariable = lbl_field_text_StringVar) # bind to StringVar
         lbl_field_text.grid(row=0, column=1)
         # Save label's and StringVar to the list
-        self.curr_status_lines_gui[oneStatusLine.name] = [lbl_field_text_StringVar, lbl_field_name, lbl_field_text]
+        self.curr_status_lines[oneStatusLine.name] = [lbl_field_text_StringVar, lbl_field_name, lbl_field_text]
         # update label's color
         self.update_labels_color(oneStatusLine.name, oneStatusLine.color)
 
-    def update_labels_color(self, field_name, color):
-        self.curr_status_lines_gui[field_name][1].config(bg=color) # update lbl_field_name
-        self.curr_status_lines_gui[field_name][2].config(bg=color) # update lbl_field_text
+    def handle_existing_status_line(self, oneStatusLine):
+        try:
+            ### Update the label's text (in existing label)
+            self.curr_status_lines[oneStatusLine.name][0].set(oneStatusLine.value) # Set text to the StringVar
+            self.update_labels_color(oneStatusLine.name, oneStatusLine.color)
+        except TypeError as e:
+            print("Type error in field '{}': {}".format(oneStatusLine.name, e))
+            self.curr_status_lines[oneStatusLine.name][0].set("Wrong type") # Set text to the StringVar
+            self.update_labels_color(oneStatusLine.name, "#fffffffff")
+        except Exception as e:
+            print("Exception in field '{}': {}".format(oneStatusLine.name, e))
+            print("Let's see.. a new exception during putting NewStatusBatchMsg into GUI")
+            import pdb; pdb.set_trace()
 
+    def update_labels_color(self, field_name, color):
+        self.curr_status_lines[field_name][1].config(bg=color) # update lbl_field_name
+        self.curr_status_lines[field_name][2].config(bg=color) # update lbl_field_text
+
+
+class StatusGroup():
+    def __init__(self):
+        pass
 
 class OneStatusLine():
     """
@@ -276,15 +279,18 @@ class OneStatusLine():
             self.color = "#ffffff" # not defined color
         
         # Handle compass messages
-        compass_messages_list = ["yaw", "azimuth", "telem_azimuth", "blob: yaw", "blob: image_mapper_yaw"] # classify string names like this as a compass messages
-        if msg_name in compass_messages_list:
+        compass_messages_list = ["Compass"] # classify string names like this as a compass messages
+        if self.group in compass_messages_list:
             # convert to the value between [0,360)
             self.azimuth_value = float(self.value) % 360 # add azimuth value field
             # add message to the compass msgs list
             compass_msgs[msg_name] = self
         
 
-class Window():
+class MainWindow():
+    '''
+    Main window - GUI entry point
+    '''
     def __init__(self, master, conn):
         self.conn = conn # UDP connection object
         self.master = master
@@ -300,12 +306,12 @@ class Window():
         self.always_on_top.set(1)
         self.master.wm_attributes("-topmost", 1)
         
-        # Compass
+        # Initialize Compass window
         self.compass_msgs = {} # messages for the compass
-        self.compass = Compass_window(self, self.compass_msgs)
+        self.compassWindow = CompassWindow(self, self.compass_msgs)
         
-        # Statuses Window
-        self.status_window = StatusWindow(self)
+        # Initialize Statuses MainWindow
+        self.statusWindow = StatusWindow(self)
 
         self.add_frames()
         self.master.after(10, self.update_all)
@@ -354,7 +360,7 @@ class Window():
         # Add always on top checkbox
         tk.Checkbutton(self.control_frame, text="Always on top <t>", variable=self.always_on_top, command=self.always_on_top_toggle).grid(row=1, column=0, pady=0, sticky="W")
         # Add draw compass checkbox
-        tk.Checkbutton(self.control_frame, text="Draw compass <c>", variable=self.compass.draw_compass, command=self.compass.draw_compass_toggle).grid(row=2, column=0, pady=0, sticky="W")
+        tk.Checkbutton(self.control_frame, text="Draw compass <c>", variable=self.compassWindow.draw_compass, command=self.compassWindow.draw_compass_toggle).grid(row=2, column=0, pady=0, sticky="W")
         # Add quit button
         tk.Button(self.control_frame, text ="Quit <q>", command = self.quit_all).grid(row=3, column=0, pady=0, sticky="W")
 
@@ -371,13 +377,13 @@ class Window():
 
     def c_pressed(self, event):
         print("'C' pressed, toggling compass")
-        self.compass.draw_compass.set(1 - self.compass.draw_compass.get()) # toggle the checkbox state
-        self.compass.draw_compass_toggle()
+        self.compassWindow.draw_compass.set(1 - self.compassWindow.draw_compass.get()) # toggle the checkbox state
+        self.compassWindow.draw_compass_toggle()
 
     def clear_button_click(self):
         for child in self.dynamic_status_frame.winfo_children():
             child.destroy()
-        self.status_window.clear_fields()
+        self.statusWindow.clear_status_lines()
 
     def update_all(self):
         NewStatusBatchList = self.conn.recv_select_list() # Get NewStatusLines from UDP socket
@@ -391,10 +397,10 @@ class Window():
                     # parse {..., "msg_name": [val, group, color], ... } to [..., OneStatusLine(), ... }
                     StatusLinesList.append(OneStatusLine(field_name, NewStatusBatchMsg[field_name], self.compass_msgs))
 
-                self.status_window.update_labels_text(StatusLinesList)
+                self.statusWindow.get_new_status_status_lines(StatusLinesList)
 
-                if self.compass.draw_compass.get(): # if draw compass checkbox is active
-                    self.compass.update_compass()
+                if self.compassWindow.draw_compass.get(): # if draw compass checkbox is active
+                    self.compassWindow.update_compass()
             else:
                 pass # No NewStatusBatchMsg received in this iteration
         
@@ -414,5 +420,5 @@ class Window():
 
 root = tk.Tk()
 conn = UDP(("127.0.0.1", 5005)) # UDP connection object
-Window(root, conn)
+MainWindow(root, conn)
 root.mainloop()
