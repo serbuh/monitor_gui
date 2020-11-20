@@ -154,34 +154,112 @@ class StatusWindow():
     Status messages frame
     '''
     def __init__(self, father_window):
-        self.curr_status_groups = {} # Zeroing current status groups list
-        self.curr_status_lines = {} # Zeroing current status lines list
+        self.status_groups = StatusGroups()
         self.father_window = father_window
 
-    def clear_status_lines(self):
-        self.curr_status_groups = {} # Zeroing current status groups list
-        self.curr_status_lines = {} # Zeroing current status lines list
-
-    def get_new_status_status_lines(self, StatusLinesList):
+    def handle_received_status_lines(self, StatusLinesList):
         '''
         New status line received  
         Update groups and labels
         '''
         # iterate over a batch of new status lines
         for oneStatusLine in StatusLinesList:
-            if oneStatusLine.group not in self.curr_status_groups:
-                self.create_new_status_group(oneStatusLine) # New group
+            self.status_groups.add_new_group_or_line_if_not_exist(oneStatusLine)
+            
+        
+            if oneStatusLine.name not in self.curr_status_lines:
+                self.create_new_status_line(oneStatusLine) # New status line in existing group
             else:
-                if oneStatusLine.name not in self.curr_status_lines:
-                    self.create_new_status_line(oneStatusLine) # New status line in existing group
-                else:
-                    self.handle_existing_status_line(oneStatusLine) # Existing status line in existing group
+                self.handle_existing_status_line(oneStatusLine) # Existing status line in existing group
 
-    def create_new_status_group(self, oneStatusLine):
-        group = oneStatusLine.group
-        print("New group: {}".format(group))
-        self.curr_status_groups[group] = group # dict of {"group": "group"}
+    def handle_existing_status_line(self, oneStatusLine):
+        try:
+            ### Update the label's text (in existing label)
+            self.curr_status_lines[oneStatusLine.name][0].set(oneStatusLine.value) # Set text to the StringVar
+            self.update_labels_color(oneStatusLine.name, oneStatusLine.color)
+        except TypeError as e:
+            print("Type error in field '{}': {}".format(oneStatusLine.name, e))
+            self.curr_status_lines[oneStatusLine.name][0].set("Wrong type") # Set text to the StringVar
+            self.update_labels_color(oneStatusLine.name, "#fffffffff")
+        except Exception as e:
+            print("Exception in field '{}': {}".format(oneStatusLine.name, e))
+            print("Let's see.. a new exception during putting NewStatusBatchMsg into GUI")
+            import pdb; pdb.set_trace()
 
+    def update_labels_color(self, field_name, color):
+        self.curr_status_lines[field_name][1].config(bg=color) # update lbl_field_name
+        self.curr_status_lines[field_name][2].config(bg=color) # update lbl_field_text
+
+
+class StatusGroups():
+    def __init__(self):
+        self.curr_group_list = {}
+    
+    def clear_status_lines(self):
+        self.curr_group_list = {} # Zeroing current status groups list
+        self.curr_status_lines = {} # Zeroing current status lines list
+
+    def add_new_group_or_line_if_not_exist(self, oneStatusLine):
+        if oneStatusLine.group not in self.curr_group_list:
+            print("New group: {}".format(oneStatusLine.group))
+            # idiot line.. group has only one status line... yep, sure..
+            self.curr_group_list[oneStatusLine.group] = oneStatusLine # dict of {"group": "oneStatusLine"}
+
+class StatusGroup():
+    def __init__(self):
+        self.curr_status_lines = {}
+    
+    def add_new_line_if_not_exist(oneStatusLine):
+        pass
+
+    def handle_status_line(self, oneStatusLine):
+        pass
+
+    def clear_all_groups(self):
+        pass
+
+    def clear_group(self, groupName):
+        pass
+
+class OneStatusLine():
+    """
+    Class that implements one line in the list of status.
+    (e.g line can be: [value, group, color] )
+    Items which contains "compass" keywords will be added to the compassMsgs list
+    """
+    def __init__(self, msg_name, msg_content, compass_msgs):
+        self.name = msg_name
+        try:
+            self.value = msg_content[0]
+            self.group = msg_content[1]
+
+            # color handle
+            received_color = msg_content[2]
+            if isinstance(received_color, int): # convert the color to string if the color was defined with enum and not as a '#00ff00' string
+                if received_color == 0: # good color
+                    self.color = "green"
+                elif received_color == 1: # not so good color
+                    self.color = "goldenrod1"
+                elif received_color == 2: # bad color
+                    self.color = "red"
+                elif received_color == 3: # not defined color
+                    self.color = "white"
+            else: # if color was already defined as a string
+                self.color = msg_content[2]
+
+        except IndexError:
+            self.value = -999
+            self.group = "None"
+            self.color = "#ffffff" # not defined color
+        
+        # Handle compass messages
+        compass_messages_list = ["Compass"] # classify string names like this as a compass messages
+        if self.group in compass_messages_list:
+            # convert to the value between [0,360)
+            self.azimuth_value = float(self.value) % 360 # add azimuth value field
+            # add message to the compass msgs list
+            compass_msgs[msg_name] = self
+    
     def create_new_status_line(self, oneStatusLine):
         '''
         Add new labels to the current labels list (self.curr_status_lines)
@@ -223,68 +301,6 @@ class StatusWindow():
         self.curr_status_lines[oneStatusLine.name] = [lbl_field_text_StringVar, lbl_field_name, lbl_field_text]
         # update label's color
         self.update_labels_color(oneStatusLine.name, oneStatusLine.color)
-
-    def handle_existing_status_line(self, oneStatusLine):
-        try:
-            ### Update the label's text (in existing label)
-            self.curr_status_lines[oneStatusLine.name][0].set(oneStatusLine.value) # Set text to the StringVar
-            self.update_labels_color(oneStatusLine.name, oneStatusLine.color)
-        except TypeError as e:
-            print("Type error in field '{}': {}".format(oneStatusLine.name, e))
-            self.curr_status_lines[oneStatusLine.name][0].set("Wrong type") # Set text to the StringVar
-            self.update_labels_color(oneStatusLine.name, "#fffffffff")
-        except Exception as e:
-            print("Exception in field '{}': {}".format(oneStatusLine.name, e))
-            print("Let's see.. a new exception during putting NewStatusBatchMsg into GUI")
-            import pdb; pdb.set_trace()
-
-    def update_labels_color(self, field_name, color):
-        self.curr_status_lines[field_name][1].config(bg=color) # update lbl_field_name
-        self.curr_status_lines[field_name][2].config(bg=color) # update lbl_field_text
-
-
-class StatusGroup():
-    def __init__(self):
-        pass
-
-class OneStatusLine():
-    """
-    Class that implements one line in the list of status.
-    (e.g line can be: [value, group, color] )
-    Items which contains "compass" keywords will be added to the compassMsgs list
-    """
-    def __init__(self, msg_name, msg_content, compass_msgs):
-        self.name = msg_name
-        try:
-            self.value = msg_content[0]
-            self.group = msg_content[1]
-
-            # color handle
-            received_color = msg_content[2]
-            if isinstance(received_color, int): # convert the color to string if the color was defined with enum and not as a '#00ff00' string
-                if received_color == 0: # good color
-                    self.color = "green"
-                elif received_color == 1: # not so good color
-                    self.color = "goldenrod1"
-                elif received_color == 2: # bad color
-                    self.color = "red"
-                elif received_color == 3: # not defined color
-                    self.color = "white"
-            else: # if color was already defined as a string
-                self.color = msg_content[2]
-
-        except IndexError:
-            self.value = -999
-            self.group = "None"
-            self.color = "#ffffff" # not defined color
-        
-        # Handle compass messages
-        compass_messages_list = ["Compass"] # classify string names like this as a compass messages
-        if self.group in compass_messages_list:
-            # convert to the value between [0,360)
-            self.azimuth_value = float(self.value) % 360 # add azimuth value field
-            # add message to the compass msgs list
-            compass_msgs[msg_name] = self
         
 
 class MainWindow():
@@ -314,7 +330,7 @@ class MainWindow():
         self.statusWindow = StatusWindow(self)
 
         self.add_frames()
-        self.master.after(10, self.update_all)
+        self.master.after(10, self.get_new_status_msg)
 
     def add_frames(self):
         '''
@@ -353,7 +369,6 @@ class MainWindow():
         self.dynamic_status_frame.grid(row=1, column=0, pady=0)
         self.add_to_dynamic_status_frame()
 
-
     def add_to_control_frame(self):
         # Add clear button
         tk.Button(self.control_frame, text ="Clear labels", command = self.clear_button_click).grid(row=0, column=0, pady=0, sticky="W")
@@ -383,9 +398,10 @@ class MainWindow():
     def clear_button_click(self):
         for child in self.dynamic_status_frame.winfo_children():
             child.destroy()
-        self.statusWindow.clear_status_lines()
+        print("TODO! clear status lines")
+        import pdb; pdb.set_trace()#self.statusWindow.clear_status_lines()
 
-    def update_all(self):
+    def get_new_status_msg(self):
         NewStatusBatchList = self.conn.recv_select_list() # Get NewStatusLines from UDP socket
         # iterate over a list of status line batches
         for NewStatusBatchMsg in NewStatusBatchList:
@@ -397,14 +413,14 @@ class MainWindow():
                     # parse {..., "msg_name": [val, group, color], ... } to [..., OneStatusLine(), ... }
                     StatusLinesList.append(OneStatusLine(field_name, NewStatusBatchMsg[field_name], self.compass_msgs))
 
-                self.statusWindow.get_new_status_status_lines(StatusLinesList)
+                self.statusWindow.handle_received_status_lines(StatusLinesList)
 
                 if self.compassWindow.draw_compass.get(): # if draw compass checkbox is active
                     self.compassWindow.update_compass()
             else:
                 pass # No NewStatusBatchMsg received in this iteration
         
-        self.master.after(10, self.update_all)
+        self.master.after(10, self.get_new_status_msg)
 
     def q_pressed(self, event):
         print("'Q' pressed. Exit.")
