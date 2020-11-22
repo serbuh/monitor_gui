@@ -69,7 +69,7 @@ class CompassWindow():
                         text="Compass",
                         padx=10,
                         pady=10,
-                        master=self.father_window.master,
+                        master=self.father_window,
                         width=50,
                         height=20,
                         borderwidth=1,
@@ -151,103 +151,23 @@ class CompassArrow():
 
 class StatusWindow():
     '''
-    Status messages frame
+    Status lines frame
     '''
     def __init__(self, father_window):
-        self.curr_status_groups = {} # Zeroing current status groups list
-        self.curr_status_lines = {} # Zeroing current status lines list
         self.father_window = father_window
+        self.status_groups = StatusGroups(father_window)
 
-    def clear_status_lines(self):
-        self.curr_status_groups = {} # Zeroing current status groups list
-        self.curr_status_lines = {} # Zeroing current status lines list
-
-    def get_new_status_status_lines(self, StatusLinesList):
+    def handle_received_status_lines(self, StatusLinesMsgsList):
         '''
         New status line received  
         Update groups and labels
         '''
         # iterate over a batch of new status lines
-        for oneStatusLine in StatusLinesList:
-            if oneStatusLine.group not in self.curr_status_groups:
-                self.create_new_status_group(oneStatusLine) # New group
-            else:
-                if oneStatusLine.name not in self.curr_status_lines:
-                    self.create_new_status_line(oneStatusLine) # New status line in existing group
-                else:
-                    self.handle_existing_status_line(oneStatusLine) # Existing status line in existing group
-
-    def create_new_status_group(self, oneStatusLine):
-        group = oneStatusLine.group
-        print("New group: {}".format(group))
-        self.curr_status_groups[group] = group # dict of {"group": "group"}
-
-    def create_new_status_line(self, oneStatusLine):
-        '''
-        Add new labels to the current labels list (self.curr_status_lines)
-        '''
-        
-        print("New status line: '{}'".format(oneStatusLine.name))
-        # Add labels in frames to the main window (root)
-        
-        row_count = len(self.curr_status_lines)
-
-        # Create subframe for the field
-        frm_msg = tk.Frame(master=self.father_window.dynamic_status_frame,
-                    width=50,
-                    height=10,
-                    bg="grey",
-                    borderwidth=0,
-                    )
-        self.father_window.dynamic_status_frame.rowconfigure(row_count, weight=1, minsize=20)
-        self.father_window.dynamic_status_frame.columnconfigure(0, weight=1, minsize=50)
-        frm_msg.grid(row=row_count, column=0, pady=0) # +1 because we have a frame of constant things before
-        
-        # Add new Label
-        lbl_field_text_StringVar  = tk.StringVar()             # Create new StringVar
-        # Update the label's text (in a new label)
-        try:
-            lbl_field_text_StringVar.set(oneStatusLine.value) # Set text to the StringVar
-        except TypeError as e:
-            print("Type error in field '{}': {}".format(oneStatusLine.name, e))
-            lbl_field_text_StringVar.set("Wrong type") # Set text to the StringVar
-        
-        # Create the lable itself and assign a text
-        max_name_len = max(50, len(oneStatusLine.name))
-        max_value_len = max(50, len(oneStatusLine.name))
-        lbl_field_name = tk.Label(master = frm_msg, width=max_name_len, relief=tk.RAISED, bd=2, text = oneStatusLine.name)
-        lbl_field_name.grid(row=0, column=0)
-        lbl_field_text = tk.Label(master = frm_msg, width=max_value_len, relief=tk.RAISED, bd=2, textvariable = lbl_field_text_StringVar) # bind to StringVar
-        lbl_field_text.grid(row=0, column=1)
-        # Save label's and StringVar to the list
-        self.curr_status_lines[oneStatusLine.name] = [lbl_field_text_StringVar, lbl_field_name, lbl_field_text]
-        # update label's color
-        self.update_labels_color(oneStatusLine.name, oneStatusLine.color)
-
-    def handle_existing_status_line(self, oneStatusLine):
-        try:
-            ### Update the label's text (in existing label)
-            self.curr_status_lines[oneStatusLine.name][0].set(oneStatusLine.value) # Set text to the StringVar
-            self.update_labels_color(oneStatusLine.name, oneStatusLine.color)
-        except TypeError as e:
-            print("Type error in field '{}': {}".format(oneStatusLine.name, e))
-            self.curr_status_lines[oneStatusLine.name][0].set("Wrong type") # Set text to the StringVar
-            self.update_labels_color(oneStatusLine.name, "#fffffffff")
-        except Exception as e:
-            print("Exception in field '{}': {}".format(oneStatusLine.name, e))
-            print("Let's see.. a new exception during putting NewStatusBatchMsg into GUI")
-            import pdb; pdb.set_trace()
-
-    def update_labels_color(self, field_name, color):
-        self.curr_status_lines[field_name][1].config(bg=color) # update lbl_field_name
-        self.curr_status_lines[field_name][2].config(bg=color) # update lbl_field_text
+        for oneStatusLineMsg in StatusLinesMsgsList:
+            self.status_groups.handle_status_line(oneStatusLineMsg)
 
 
-class StatusGroup():
-    def __init__(self):
-        pass
-
-class OneStatusLine():
+class OneStatusLineMsg():
     """
     Class that implements one line in the list of status.
     (e.g line can be: [value, group, color] )
@@ -285,7 +205,199 @@ class OneStatusLine():
             self.azimuth_value = float(self.value) % 360 # add azimuth value field
             # add message to the compass msgs list
             compass_msgs[msg_name] = self
+
+
+class StatusGroups():
+    '''
+    Holds a list of existing status groups
+    '''
+    def __init__(self, father_window):
+        self.curr_status_groups = {}
+        self.groups_count = 0
+        self.father_window = father_window
+    
+    def handle_status_line(self, oneStatusLineMsg):
+        '''
+        Every received (new and existing) status lines are getting here
+        '''
+        if oneStatusLineMsg.group not in self.curr_status_groups:
+            print("--> [{}]{}".format(self.groups_count,oneStatusLineMsg.group))
+            self.curr_status_groups[oneStatusLineMsg.group] = OneStatusGroup(oneStatusLineMsg, self.father_window, self.groups_count) # Create new group {..., "group_name": oneStatusGroup, ...}
+            self.groups_count += 1
         
+        # Handle status line in already existing group
+        self.curr_status_groups[oneStatusLineMsg.group].handle_status_line(oneStatusLineMsg)
+    
+    def clear_all_groups(self):
+        # TODO destruct GUI Elements for each group
+        self.curr_status_groups = {} # Zeroing current status groups list
+
+    def clear_group(self, group_name):
+        # TODO destruct GUI Elements for group_name
+        self.curr_status_groups.pop(group_name) # Remove "group_name" from status groups list
+
+
+class OneStatusGroup():
+    '''
+    A group of status lines. Holds a list of status lines in the group
+    '''
+    def __init__(self, oneStatusLineMsg, father_window, group_number):
+        '''
+        Creates a new group
+        '''
+        self.group_name = oneStatusLineMsg.group
+        self.group_number = group_number
+        self.group_lines_count = 0
+        self.father_window = father_window
+        self.curr_status_lines = {}
+        self.init_group_gui_elements(oneStatusLineMsg)
+
+    def init_group_gui_elements(self, oneStatusLineMsg):
+        self.group_gui_elements = OneStatusGroupGUIElements(oneStatusLineMsg, self.father_window, self.group_number)
+    
+    def handle_status_line(self, oneStatusLineMsg):
+        '''
+        Handle status line in existing group
+        '''
+        if oneStatusLineMsg.name not in self.curr_status_lines:
+            print("--> [{}]{} [{}]{}".format(self.group_number, oneStatusLineMsg.group, self.group_lines_count, oneStatusLineMsg.name))
+            self.curr_status_lines[oneStatusLineMsg.name] = OneStatusLine(oneStatusLineMsg, self.group_gui_elements.frame, self.group_lines_count) # Create new line in a current group {..., "line_name": oneStatusLineMsg, ...}
+            self.group_lines_count += 1
+
+        # Handle status line (line already exist)
+        self.curr_status_lines[oneStatusLineMsg.name].handle_status_line(oneStatusLineMsg)
+
+    def clear_all_groups(self):
+        pass
+
+    def clear_group(self, group_name):
+        pass
+
+
+class OneStatusLine():
+    def __init__(self, oneStatusLineMsg, father_window, line_number):
+        self.father_window = father_window
+        self.line_number = line_number
+        self.init_line_gui_elements(oneStatusLineMsg)
+
+    def init_line_gui_elements(self, oneStatusLineMsg):
+        self.line_gui_elements = OneStatusLineGUIElements(oneStatusLineMsg, self.father_window, self.line_number)
+
+    def handle_status_line(self, oneStatusLineMsg):
+        self.line_gui_elements.update(oneStatusLineMsg) # update line GUI Elements
+
+
+class OneStatusGroupGUIElements():
+    '''
+    GUI Elements of the status group
+    '''
+    def __init__(self, oneStatusLineMsg, father_window, group_number):
+        '''
+        Init new group GUI Elements
+        '''
+        print("    [{}]{} - Creating gui elements".format(group_number, oneStatusLineMsg.group))
+        self.father_window = father_window
+        self.group_number = group_number
+
+        # Create subframe for group
+        self.frame = tk.LabelFrame(
+                        text=oneStatusLineMsg.group,
+                        padx=10,
+                        pady=10,
+                        master=self.father_window,
+                        width=50,
+                        height=20,
+                        borderwidth=1,
+                        )
+        self.frame.grid(row=self.group_number, column=3, pady=0)
+
+        # Add show/hide button
+        self.show_frame = 1
+        self.show_hide_btn_text = tk.StringVar()
+        self.show_hide_btn_text.set("Hide")
+        self.show_hide_btn = tk.Button(self.father_window, textvariable =self.show_hide_btn_text, command = self.toggle_show_hide_group).grid(row=self.group_number, column=0, pady=0, sticky="NW")
+    
+    def toggle_show_hide_group(self):
+        if self.show_frame == 0:
+            # Show frame
+            self.frame.grid(row=self.group_number, column=3, pady=0)
+            self.show_frame = 1
+            self.show_hide_btn_text.set("Hide")
+        elif self.show_frame == 1:
+            # Hide frame
+            self.frame.grid_remove()
+            self.show_frame = 0
+            self.show_hide_btn_text.set("Show")
+
+
+
+    def update(self, oneStatusLineMsg):
+        '''
+        update existing group GUI Elements
+        '''
+        pass
+
+
+class OneStatusLineGUIElements():
+    '''
+    GUI Elements of the status line in a group
+    '''
+    def __init__(self, oneStatusLineMsg, father_window, line_number):
+        '''
+        Init new line GUI Elements
+        '''
+        self.line_number = line_number
+        print("    [{}]{} [{}]{} - Creating gui elements".format(self.line_number, oneStatusLineMsg.group, line_number, oneStatusLineMsg.name))
+        self.father_window = father_window
+
+        # Create subframe for line
+        self.frame = tk.Frame(
+                        master=self.father_window,
+                        width=50,
+                        height=20,
+                        bg="grey",
+                        borderwidth=0,
+                        )
+        self.father_window.rowconfigure(self.line_number, weight=1, minsize=20)
+        self.father_window.columnconfigure(0, weight=1, minsize=50)
+        self.frame.grid(row=self.line_number, column=0, pady=0)
+
+        # Create field name lable
+        max_name_len = max(50, len(oneStatusLineMsg.name))
+        self.field_name_label = tk.Label(master = self.frame, width=max_name_len, relief=tk.RAISED, bd=2, text = oneStatusLineMsg.name)
+        self.field_name_label.grid(row=0, column=0)
+
+        # Create field value lable (and it's text variable)
+        self.label_text = tk.StringVar()             # Create value label StringVar
+        max_value_len = max(50, len(str(oneStatusLineMsg.value)))
+        self.field_value_label = tk.Label(master = self.frame, width=max_value_len, relief=tk.RAISED, bd=2, textvariable = self.label_text) # bind to StringVar
+        self.field_value_label.grid(row=0, column=1)
+
+        # update label's color
+        self.update_labels_color(oneStatusLineMsg.name, oneStatusLineMsg.color)
+
+    def update_labels_color(self, field_name, color):
+        self.field_name_label.config(bg=color) # update self.field_name_label
+        self.field_value_label.config(bg=color) # update self.field_value_label
+
+    def update(self, oneStatusLineMsg):
+        '''
+        update existing line GUI Elements
+        '''
+        # Update the vlue label text
+        try:
+            self.label_text.set(oneStatusLineMsg.value) # Set text to the StringVar
+            self.update_labels_color(oneStatusLineMsg.name, oneStatusLineMsg.color)
+        except TypeError as e:
+            print("Type error in field '{}': {}".format(oneStatusLineMsg.name, e))
+            self.label_text.set("Wrong type") # Set text to the StringVar
+            self.update_labels_color(oneStatusLineMsg.name, "#fffffffff")
+        except Exception as e:
+            print("Exception in field '{}': {}".format(oneStatusLineMsg.name, e))
+            print("Let's see.. a new exception during putting NewStatusBatchMsg into GUI")
+            import pdb; pdb.set_trace()
+
+
 
 class MainWindow():
     '''
@@ -308,13 +420,15 @@ class MainWindow():
         
         # Initialize Compass window
         self.compass_msgs = {} # messages for the compass
-        self.compassWindow = CompassWindow(self, self.compass_msgs)
+        self.compassWindow = CompassWindow(self.master, self.compass_msgs)
         
-        # Initialize Statuses MainWindow
-        self.statusWindow = StatusWindow(self)
-
+        # add frames before adding elements to it
         self.add_frames()
-        self.master.after(10, self.update_all)
+
+        # Initialize Statuses MainWindow
+        self.statusWindow = StatusWindow(self.dynamic_status_frame)
+
+        self.master.after(10, self.get_new_status_msg)
 
     def add_frames(self):
         '''
@@ -353,7 +467,6 @@ class MainWindow():
         self.dynamic_status_frame.grid(row=1, column=0, pady=0)
         self.add_to_dynamic_status_frame()
 
-
     def add_to_control_frame(self):
         # Add clear button
         tk.Button(self.control_frame, text ="Clear labels", command = self.clear_button_click).grid(row=0, column=0, pady=0, sticky="W")
@@ -383,28 +496,29 @@ class MainWindow():
     def clear_button_click(self):
         for child in self.dynamic_status_frame.winfo_children():
             child.destroy()
-        self.statusWindow.clear_status_lines()
+        print("TODO! clear status lines")
+        import pdb; pdb.set_trace()#self.statusWindow.clear_status_lines()
 
-    def update_all(self):
+    def get_new_status_msg(self):
         NewStatusBatchList = self.conn.recv_select_list() # Get NewStatusLines from UDP socket
         # iterate over a list of status line batches
         for NewStatusBatchMsg in NewStatusBatchList:
             if NewStatusBatchMsg is not None:
                 
-                StatusLinesList = []
-                # Parse new batch of status lines to list of OneStatusLine classes
+                StatusLinesMsgsList = []
+                # Parse new batch of status lines to list of OneStatusLineMsg classes
                 for field_name in NewStatusBatchMsg:
-                    # parse {..., "msg_name": [val, group, color], ... } to [..., OneStatusLine(), ... }
-                    StatusLinesList.append(OneStatusLine(field_name, NewStatusBatchMsg[field_name], self.compass_msgs))
+                    # parse {..., "msg_name": [val, group, color], ... } to [..., OneStatusLineMsg, ... }
+                    StatusLinesMsgsList.append(OneStatusLineMsg(field_name, NewStatusBatchMsg[field_name], self.compass_msgs))
 
-                self.statusWindow.get_new_status_status_lines(StatusLinesList)
+                self.statusWindow.handle_received_status_lines(StatusLinesMsgsList)
 
                 if self.compassWindow.draw_compass.get(): # if draw compass checkbox is active
                     self.compassWindow.update_compass()
             else:
                 pass # No NewStatusBatchMsg received in this iteration
         
-        self.master.after(10, self.update_all)
+        self.master.after(10, self.get_new_status_msg)
 
     def q_pressed(self, event):
         print("'Q' pressed. Exit.")
