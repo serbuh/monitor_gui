@@ -261,7 +261,7 @@ class OneStatusGroup():
         '''
         if oneStatusLineMsg.name not in self.curr_status_lines:
             print("--> [{}]{} [{}]{}".format(self.group_number, oneStatusLineMsg.group, self.group_lines_count, oneStatusLineMsg.name))
-            self.curr_status_lines[oneStatusLineMsg.name] = OneStatusLine(oneStatusLineMsg, self.father_window, self.group_lines_count) # Create new line in a current group {..., "line_name": oneStatusLineMsg, ...}
+            self.curr_status_lines[oneStatusLineMsg.name] = OneStatusLine(oneStatusLineMsg, self.group_gui_elements.frame, self.group_lines_count) # Create new line in a current group {..., "line_name": oneStatusLineMsg, ...}
             self.group_lines_count += 1
 
         # Handle status line (line already exist)
@@ -298,8 +298,9 @@ class OneStatusGroupGUIElements():
         print("    [{}]{} - Creating gui elements".format(group_number, oneStatusLineMsg.group))
         self.father_window = father_window
         self.group_number = group_number
+
         # Create subframe for group
-        frm_group = tk.LabelFrame(
+        self.frame = tk.LabelFrame(
                         text=oneStatusLineMsg.group,
                         padx=10,
                         pady=10,
@@ -308,7 +309,7 @@ class OneStatusGroupGUIElements():
                         height=20,
                         borderwidth=1,
                         )
-        frm_group.grid(row=self.group_number, column=0, pady=0)
+        self.frame.grid(row=self.group_number, column=0, pady=0)
 
 
     def update(self, oneStatusLineMsg):
@@ -317,42 +318,6 @@ class OneStatusGroupGUIElements():
         '''
         pass
 
-    def create_new_status_line(self, oneStatusLineMsg):
-
-        row_count = len(self.curr_status_lines)
-
-        # Create subframe for the field
-        frm_msg = tk.Frame(master=self.father_window,
-                    width=50,
-                    height=10,
-                    bg="grey",
-                    borderwidth=0,
-                    )
-        self.father_window.rowconfigure(row_count, weight=1, minsize=20)
-        self.father_window.columnconfigure(0, weight=1, minsize=50)
-        frm_msg.grid(row=row_count, column=0, pady=0)
-        
-        # Add new Label
-        lbl_field_text_StringVar  = tk.StringVar()             # Create new StringVar
-        # Update the label's text (in a new label)
-        try:
-            lbl_field_text_StringVar.set(oneStatusLineMsg.value) # Set text to the StringVar
-        except TypeError as e:
-            print("Type error in field '{}': {}".format(oneStatusLineMsg.name, e))
-            lbl_field_text_StringVar.set("Wrong type") # Set text to the StringVar
-        
-        # Create the lable itself and assign a text
-        max_name_len = max(50, len(oneStatusLineMsg.name))
-        max_value_len = max(50, len(oneStatusLineMsg.name))
-        lbl_field_name = tk.Label(master = frm_msg, width=max_name_len, relief=tk.RAISED, bd=2, text = oneStatusLineMsg.name)
-        lbl_field_name.grid(row=0, column=0)
-        lbl_field_text = tk.Label(master = frm_msg, width=max_value_len, relief=tk.RAISED, bd=2, textvariable = lbl_field_text_StringVar) # bind to StringVar
-        lbl_field_text.grid(row=0, column=1)
-        # Save label's and StringVar to the list
-        self.curr_status_lines[oneStatusLineMsg.name] = [lbl_field_text_StringVar, lbl_field_name, lbl_field_text]
-        # update label's color
-        self.update_labels_color(oneStatusLineMsg.name, oneStatusLineMsg.color)
-    
 
 class OneStatusLineGUIElements():
     '''
@@ -366,30 +331,53 @@ class OneStatusLineGUIElements():
         print("    [{}]{} [{}]{} - Creating gui elements".format(self.line_number, oneStatusLineMsg.group, line_number, oneStatusLineMsg.name))
         self.father_window = father_window
 
+        # Create subframe for line
+        self.frame = tk.Frame(
+                        master=self.father_window,
+                        width=50,
+                        height=20,
+                        bg="grey",
+                        borderwidth=0,
+                        )
+        self.father_window.rowconfigure(self.line_number, weight=1, minsize=20)
+        self.father_window.columnconfigure(0, weight=1, minsize=50)
+        self.frame.grid(row=self.line_number, column=0, pady=0)
+
+        # Create field name lable
+        max_name_len = max(50, len(oneStatusLineMsg.name))
+        self.field_name_label = tk.Label(master = self.frame, width=max_name_len, relief=tk.RAISED, bd=2, text = oneStatusLineMsg.name)
+        self.field_name_label.grid(row=0, column=0)
+
+        # Create field value lable (and it's text variable)
+        self.label_text = tk.StringVar()             # Create value label StringVar
+        max_value_len = max(50, len(str(oneStatusLineMsg.value)))
+        self.field_value_label = tk.Label(master = self.frame, width=max_value_len, relief=tk.RAISED, bd=2, textvariable = self.label_text) # bind to StringVar
+        self.field_value_label.grid(row=0, column=1)
+
+        # update label's color
+        self.update_labels_color(oneStatusLineMsg.name, oneStatusLineMsg.color)
+
+    def update_labels_color(self, field_name, color):
+        self.field_name_label.config(bg=color) # update self.field_name_label
+        self.field_value_label.config(bg=color) # update self.field_value_label
+
     def update(self, oneStatusLineMsg):
         '''
         update existing line GUI Elements
         '''
-        pass
-
-   
-    def handle_existing_status_line(self, oneStatusLineMsg):
+        # Update the vlue label text
         try:
-            ### Update the label's text (in existing label)
-            self.curr_status_lines[oneStatusLineMsg.name][0].set(oneStatusLineMsg.value) # Set text to the StringVar
+            self.label_text.set(oneStatusLineMsg.value) # Set text to the StringVar
             self.update_labels_color(oneStatusLineMsg.name, oneStatusLineMsg.color)
         except TypeError as e:
             print("Type error in field '{}': {}".format(oneStatusLineMsg.name, e))
-            self.curr_status_lines[oneStatusLineMsg.name][0].set("Wrong type") # Set text to the StringVar
+            self.label_text.set("Wrong type") # Set text to the StringVar
             self.update_labels_color(oneStatusLineMsg.name, "#fffffffff")
         except Exception as e:
             print("Exception in field '{}': {}".format(oneStatusLineMsg.name, e))
             print("Let's see.. a new exception during putting NewStatusBatchMsg into GUI")
             import pdb; pdb.set_trace()
 
-    def update_labels_color(self, field_name, color):
-        self.curr_status_lines[field_name][1].config(bg=color) # update lbl_field_name
-        self.curr_status_lines[field_name][2].config(bg=color) # update lbl_field_text
 
 
 class MainWindow():
