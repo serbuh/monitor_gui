@@ -154,8 +154,8 @@ class StatusWindow():
     Status lines frame
     '''
     def __init__(self, father_window):
-        self.status_groups = StatusGroups()
         self.father_window = father_window
+        self.status_groups = StatusGroups(father_window)
 
     def handle_received_status_lines(self, StatusLinesMsgsList):
         '''
@@ -211,16 +211,19 @@ class StatusGroups():
     '''
     Holds a list of existing status groups
     '''
-    def __init__(self):
+    def __init__(self, father_window):
         self.curr_status_groups = {}
+        self.groups_count = 0
+        self.father_window = father_window
     
     def handle_status_line(self, oneStatusLineMsg):
         '''
         Every received (new and existing) status lines are getting here
         '''
         if oneStatusLineMsg.group not in self.curr_status_groups:
-            print("--> {}".format(oneStatusLineMsg.group))
-            self.curr_status_groups[oneStatusLineMsg.group] = OneStatusGroup(oneStatusLineMsg) # Create new group {..., "group_name": oneStatusGroup, ...}
+            print("--> [{}]{}".format(self.groups_count,oneStatusLineMsg.group))
+            self.curr_status_groups[oneStatusLineMsg.group] = OneStatusGroup(oneStatusLineMsg, self.father_window, self.groups_count) # Create new group {..., "group_name": oneStatusGroup, ...}
+            self.groups_count += 1
         
         # Handle status line in already existing group
         self.curr_status_groups[oneStatusLineMsg.group].handle_status_line(oneStatusLineMsg)
@@ -238,24 +241,28 @@ class OneStatusGroup():
     '''
     A group of status lines. Holds a list of status lines in the group
     '''
-    def __init__(self, oneStatusLineMsg):
+    def __init__(self, oneStatusLineMsg, father_window, group_number):
         '''
         Creates a new group
         '''
         self.group_name = oneStatusLineMsg.group
+        self.group_number = group_number
+        self.group_lines_count = 0
+        self.father_window = father_window
         self.curr_status_lines = {}
         self.init_group_gui_elements(oneStatusLineMsg)
 
     def init_group_gui_elements(self, oneStatusLineMsg):
-        self.group_gui_elements = OneStatusGroupGUIElements(oneStatusLineMsg)
+        self.group_gui_elements = OneStatusGroupGUIElements(oneStatusLineMsg, self.father_window, self.group_number)
     
     def handle_status_line(self, oneStatusLineMsg):
         '''
         Handle status line in existing group
         '''
         if oneStatusLineMsg.name not in self.curr_status_lines:
-            print("--> {} --> {}".format(oneStatusLineMsg.group, oneStatusLineMsg.name))
-            self.curr_status_lines[oneStatusLineMsg.name] = OneStatusLine(oneStatusLineMsg) # Create new line in a current group {..., "line_name": oneStatusLineMsg, ...}
+            print("--> [{}]{} [{}]{}".format(self.group_number, oneStatusLineMsg.group, self.group_lines_count, oneStatusLineMsg.name))
+            self.curr_status_lines[oneStatusLineMsg.name] = OneStatusLine(oneStatusLineMsg, self.father_window, self.group_lines_count) # Create new line in a current group {..., "line_name": oneStatusLineMsg, ...}
+            self.group_lines_count += 1
 
         # Handle status line (line already exist)
         self.curr_status_lines[oneStatusLineMsg.name].handle_status_line(oneStatusLineMsg)
@@ -268,11 +275,13 @@ class OneStatusGroup():
 
 
 class OneStatusLine():
-    def __init__(self, oneStatusLineMsg):
+    def __init__(self, oneStatusLineMsg, father_window, line_number):
+        self.father_window = father_window
+        self.line_number = line_number
         self.init_line_gui_elements(oneStatusLineMsg)
 
     def init_line_gui_elements(self, oneStatusLineMsg):
-        self.line_gui_elements = OneStatusLineGUIElements(oneStatusLineMsg)
+        self.line_gui_elements = OneStatusLineGUIElements(oneStatusLineMsg, self.father_window, self.line_number)
 
     def handle_status_line(self, oneStatusLineMsg):
         self.line_gui_elements.update(oneStatusLineMsg) # update line GUI Elements
@@ -282,11 +291,23 @@ class OneStatusGroupGUIElements():
     '''
     GUI Elements of the status group
     '''
-    def __init__(self, oneStatusLineMsg):
+    def __init__(self, oneStatusLineMsg, father_window, group_number):
         '''
         Init new group GUI Elements
         '''
-        print("    {} (Creating gui elements)".format(oneStatusLineMsg.group))
+        print("    [{}]{} - Creating gui elements".format(group_number, oneStatusLineMsg.group))
+        self.father_window = father_window
+        self.group_number = group_number
+        # Create subframe for group
+        frm_group = tk.Frame(master=self.father_window.dynamic_status_frame,
+                    width=50,
+                    height=10,
+                    bg="grey",
+                    borderwidth=0,
+                    )
+        frm_group.grid(row=self.group_number, column=0, pady=0)
+
+
 
     def update(self, oneStatusLineMsg):
         '''
@@ -295,9 +316,7 @@ class OneStatusGroupGUIElements():
         pass
 
     def create_new_status_line(self, oneStatusLineMsg):
-        print("New status line: '{}'".format(oneStatusLineMsg.name))
-        # Add labels in frames to the main window (root)
-        
+
         row_count = len(self.curr_status_lines)
 
         # Create subframe for the field
@@ -309,7 +328,7 @@ class OneStatusGroupGUIElements():
                     )
         self.father_window.dynamic_status_frame.rowconfigure(row_count, weight=1, minsize=20)
         self.father_window.dynamic_status_frame.columnconfigure(0, weight=1, minsize=50)
-        frm_msg.grid(row=row_count, column=0, pady=0) # +1 because we have a frame of constant things before
+        frm_msg.grid(row=row_count, column=0, pady=0)
         
         # Add new Label
         lbl_field_text_StringVar  = tk.StringVar()             # Create new StringVar
@@ -333,16 +352,17 @@ class OneStatusGroupGUIElements():
         self.update_labels_color(oneStatusLineMsg.name, oneStatusLineMsg.color)
     
 
-
 class OneStatusLineGUIElements():
     '''
     GUI Elements of the status line in a group
     '''
-    def __init__(self, oneStatusLineMsg):
+    def __init__(self, oneStatusLineMsg, father_window, line_number):
         '''
         Init new line GUI Elements
         '''
-        print("    {} --> {} (Creating gui elements)".format(oneStatusLineMsg.group, oneStatusLineMsg.name))
+        self.line_number = line_number
+        print("    [{}]{} [{}]{} - Creating gui elements".format(self.line_number, oneStatusLineMsg.group, line_number, oneStatusLineMsg.name))
+        self.father_window = father_window
 
     def update(self, oneStatusLineMsg):
         '''
