@@ -309,7 +309,26 @@ class OneStatusGroupGUIElements():
                         height=20,
                         borderwidth=1,
                         )
-        self.frame.grid(row=self.group_number, column=0, pady=0)
+        self.frame.grid(row=self.group_number, column=3, pady=0)
+
+        # Add show/hide button
+        self.show_frame = 1
+        self.show_hide_btn_text = tk.StringVar()
+        self.show_hide_btn_text.set("Hide")
+        self.show_hide_btn = tk.Button(self.father_window, textvariable =self.show_hide_btn_text, command = self.toggle_show_hide_group).grid(row=self.group_number, column=0, pady=0, sticky="NW")
+    
+    def toggle_show_hide_group(self):
+        if self.show_frame == 0:
+            # Show frame
+            self.frame.grid(row=self.group_number, column=3, pady=0)
+            self.show_frame = 1
+            self.show_hide_btn_text.set("Hide")
+        elif self.show_frame == 1:
+            # Hide frame
+            self.frame.grid_remove()
+            self.show_frame = 0
+            self.show_hide_btn_text.set("Show")
+
 
 
     def update(self, oneStatusLineMsg):
