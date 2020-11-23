@@ -261,7 +261,7 @@ class OneStatusGroup():
         '''
         if oneStatusLineMsg.name not in self.curr_status_lines:
             print("--> [{}]{} [{}]{}".format(self.group_number, oneStatusLineMsg.group, self.group_lines_count, oneStatusLineMsg.name))
-            self.curr_status_lines[oneStatusLineMsg.name] = OneStatusLine(oneStatusLineMsg, self.group_gui_elements.frame, self.group_lines_count) # Create new line in a current group {..., "line_name": oneStatusLineMsg, ...}
+            self.curr_status_lines[oneStatusLineMsg.name] = OneStatusLine(oneStatusLineMsg, self.group_gui_elements.frame_status_lines, self.group_lines_count) # Create new line in a current group {..., "line_name": oneStatusLineMsg, ...}
             self.group_lines_count += 1
 
         # Handle status line (line already exist)
@@ -300,34 +300,45 @@ class OneStatusGroupGUIElements():
         self.group_number = group_number
 
         # Create subframe for group
-        self.frame = tk.LabelFrame(
-                        text=oneStatusLineMsg.group,
-                        padx=10,
-                        pady=10,
+        self.frame_group = tk.Frame(
+                        padx=1,
+                        pady=1,
                         master=self.father_window,
                         width=50,
                         height=20,
                         borderwidth=1,
                         )
-        self.frame.grid(row=self.group_number, column=3, pady=0)
+        self.frame_group.grid(row=self.group_number, column=0, pady=0, sticky="W")
 
         # Add show/hide button
         self.show_frame = 1
-        self.show_hide_btn_text = tk.StringVar()
-        self.show_hide_btn_text.set("Hide")
-        self.show_hide_btn = tk.Button(self.father_window, textvariable =self.show_hide_btn_text, command = self.toggle_show_hide_group).grid(row=self.group_number, column=0, pady=0, sticky="NW")
+        #self.show_hide_btn_text = tk.StringVar()
+        #self.show_hide_btn_text.set("Hide")
+        self.show_hide_btn = tk.Button(self.frame_group, text =oneStatusLineMsg.group, command = self.toggle_show_hide_group).grid(row=0, column=0, pady=0, sticky="NW")
+
+        # Create subframe for group statuses
+        self.frame_status_lines = tk.Frame(
+                        padx=2,
+                        pady=2,
+                        master=self.frame_group,
+                        width=50,
+                        height=20,
+                        borderwidth=1,
+                        )
+        self.frame_status_lines.grid(row=1, column=0, pady=0)
+
     
     def toggle_show_hide_group(self):
         if self.show_frame == 0:
             # Show frame
-            self.frame.grid(row=self.group_number, column=3, pady=0)
+            self.frame_status_lines.grid()
             self.show_frame = 1
-            self.show_hide_btn_text.set("Hide")
+            #self.show_hide_btn_text.set("Hide")
         elif self.show_frame == 1:
             # Hide frame
-            self.frame.grid_remove()
+            self.frame_status_lines.grid_remove()
             self.show_frame = 0
-            self.show_hide_btn_text.set("Show")
+            #self.show_hide_btn_text.set("Show")
 
 
 
@@ -435,13 +446,13 @@ class MainWindow():
         Add constant frames to the GUI
         '''
         # Configure masters 0 column
-        self.master.columnconfigure(0, weight=1, minsize=50)
+        self.master.columnconfigure(0, weight=1, minsize=250)
 
         # Add constatn things frame
         self.control_frame = tk.LabelFrame(
                         text="Controll",
-                        padx=10,
-                        pady=10,
+                        padx=5,
+                        pady=2,
                         master=self.master,
                         width=50,
                         height=10,
@@ -449,22 +460,22 @@ class MainWindow():
                         )
         # Configure masters 0 row
         self.master.rowconfigure(0, weight=1, minsize=20)
-        self.control_frame.grid(row=0, column=0, pady=0)
+        self.control_frame.grid(row=0, column=0, pady=0, sticky="w")
         self.add_to_control_frame()
 
         # Add dynamic status frame
         self.dynamic_status_frame = tk.LabelFrame(
                         text="Status",
-                        padx=10,
-                        pady=10,
+                        padx=5,
+                        pady=2,
                         master=self.master,
-                        width=50,
+                        width=20,
                         height=20,
                         borderwidth=1,
                         )
         # Configure masters 1 row
         self.master.rowconfigure(1, weight=1, minsize=20)
-        self.dynamic_status_frame.grid(row=1, column=0, pady=0)
+        self.dynamic_status_frame.grid(row=1, column=0, pady=0, sticky="w")
         self.add_to_dynamic_status_frame()
 
     def add_to_control_frame(self):
